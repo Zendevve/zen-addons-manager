@@ -1,6 +1,6 @@
 .page {
   padding: 2rem;
-  max-width: 1200px;
+  max-width: 1400px;
 }
 
 .page-header {
@@ -20,9 +20,231 @@
   margin: 0;
 }
 
-.placeholder {
+.search-section {
+  margin-bottom: 1.5rem;
+}
+
+.search-input {
+  width: 100%;
+  max-width: 600px;
+  padding: 0.875rem 1.25rem;
+  background: #0f0f0f;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  color: #e5e5e5;
+  font-size: 0.9375rem;
+  transition: border-color 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+.search-input::placeholder {
+  color: #666;
+}
+
+.filter-section {
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.filter-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #a0a0a0;
+}
+
+.category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid #2a2a2a;
+  border-radius: 20px;
+  color: #a0a0a0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chip:hover {
+  background: #1a1a1a;
+  color: #e5e5e5;
+}
+
+.chip.active {
+  background: #4a9eff;
+  border-color: #4a9eff;
+  color: white;
+}
+
+.results-info {
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: #a0a0a0;
+}
+
+.addon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.25rem;
+}
+
+.addon-card {
+  background: #0f0f0f;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s ease;
+}
+
+.addon-card:hover {
+  border-color: #3a3a3a;
+}
+
+.card-header {
+  margin-bottom: 0.75rem;
+}
+
+.addon-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #e5e5e5;
+  margin: 0 0 0.5rem 0;
+}
+
+.addon-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: #a0a0a0;
+}
+
+.separator {
+  color: #666;
+}
+
+.addon-description {
+  color: #a0a0a0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0 0 1rem 0;
+  flex: 1;
+}
+
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #1a1a1a;
+}
+
+.addon-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.category-badge {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  color: #a0a0a0;
+  font-weight: 500;
+}
+
+.downloads {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.card-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.install-btn {
+  padding: 0.625rem 1.25rem;
+  background: #4a9eff;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  white-space: nowrap;
+}
+
+.install-btn:hover {
+  background: #3a8eef;
+}
+
+.install-btn.installed {
+  background: transparent;
+  border: 1px solid #4ade80;
+  color: #4ade80;
+  cursor: default;
+}
+
+.install-btn.installed:hover {
+  background: transparent;
+}
+
+.details-link {
+  color: #a0a0a0;
+  font-size: 0.8125rem;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.details-link:hover {
+  color: #4a9eff;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
   text-align: center;
   padding: 4rem 2rem;
   color: #a0a0a0;
+}
+
+.empty-state p {
   font-size: 1.125rem;
+  margin: 0 0 1.5rem 0;
+}
+
+.secondary-btn {
+  padding: 0.625rem 1.25rem;
+  background: transparent;
+  color: #a0a0a0;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.secondary-btn:hover {
+  background: #1a1a1a;
+  color: #e5e5e5;
 }

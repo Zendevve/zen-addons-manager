@@ -1,10 +1,74 @@
 <div class="page">
   <header class="page-header">
     <h1>Browse Addons</h1>
-    <p class="subtitle">Discover and install new addons</p>
+    <p class="subtitle">Discover and install new addons from the catalogue</p>
   </header>
 
-  <div class="placeholder">
-    <p>🚧 Browse catalogue coming soon...</p>
+  <div class="search-section">
+    <input type="search" placeholder="Search addons, authors, or descriptions..." class="search-input"
+      [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)" />
+  </div>
+
+  <div class="filter-section">
+    <div class="filter-label">Categories:</div>
+    <div class="category-chips">
+      @for (category of addonService.categories(); track category) {
+      <button class="chip" [class.active]="selectedCategory() === category" (click)="selectedCategory.set(category)">
+        {{ category }}
+      </button>
+      }
+    </div>
+  </div>
+
+  <div class="results-info">
+    {{ filteredAddons().length }} addon{{ filteredAddons().length === 1 ? '' : 's' }} found
+  </div>
+
+  <div class="addon-grid">
+    @for (addon of filteredAddons(); track addon.id) {
+    <div class="addon-card">
+      <div class="card-header">
+        <h3 class="addon-title">{{ addon.name }}</h3>
+        <div class="addon-meta">
+          <span class="version">v{{ addon.latestVersion }}</span>
+          <span class="separator">•</span>
+          <span class="author">{{ addon.author }}</span>
+        </div>
+      </div>
+
+      <p class="addon-description">{{ addon.description }}</p>
+
+      <div class="card-footer">
+        <div class="addon-info">
+          <span class="category-badge">{{ addon.category }}</span>
+          @if (addon.downloads) {
+          <span class="downloads">{{ addon.downloads.toLocaleString() }} downloads</span>
+          }
+        </div>
+
+        <div class="card-actions">
+          @if (isInstalled(addon)) {
+          <button class="install-btn installed" disabled>
+            ✓ Installed
+          </button>
+          } @else {
+          <button class="install-btn" (click)="addonService.installFromCatalogue(addon)">
+            Install
+          </button>
+          }
+          <a [href]="addon.sourceUrl" target="_blank" class="details-link" title="View on GitHub">
+            Details
+          </a>
+        </div>
+      </div>
+    </div>
+    } @empty {
+    <div class="empty-state">
+      <p>No addons found matching your search.</p>
+      <button class="secondary-btn" (click)="searchTerm.set(''); selectedCategory.set('All')">
+        Clear Filters
+      </button>
+    </div>
+    }
   </div>
 </div>

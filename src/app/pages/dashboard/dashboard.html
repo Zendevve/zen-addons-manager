@@ -12,13 +12,13 @@
 
     <div class="stat-card">
       <div class="stat-label">Installed Addons</div>
-      <div class="stat-value">{{ stats.installedCount }}</div>
+      <div class="stat-value">{{ addonService.stats().total }}</div>
     </div>
 
     <div class="stat-card">
       <div class="stat-label">Updates Available</div>
-      <div class="stat-value" [class.has-updates]="stats.updatesAvailable > 0">
-        {{ stats.updatesAvailable }}
+      <div class="stat-value" [class.has-updates]="addonService.stats().outdated > 0">
+        {{ addonService.stats().outdated }}
       </div>
     </div>
 

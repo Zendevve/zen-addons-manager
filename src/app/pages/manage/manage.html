@@ -1,10 +1,88 @@
 <div class="page">
   <header class="page-header">
-    <h1>Manage Addons</h1>
-    <p class="subtitle">Update, remove, or configure your installed addons</p>
+    <div class="header-content">
+      <div>
+        <h1>Manage Addons</h1>
+        <p class="subtitle">{{ addonService.stats().total }} addons installed</p>
+      </div>
+      <div class="header-actions">
+        <button class="secondary-button">Update All</button>
+        <input type="search" placeholder="Search addons..." class="search-input" />
+      </div>
+    </div>
   </header>
 
-  <div class="placeholder">
-    <p>🚧 Manage view coming soon...</p>
+  <div class="stats-bar">
+    <div class="stat-item">
+      <span class="stat-icon status-enabled">✓</span>
+      <span>{{ addonService.stats().enabled }} Enabled</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-icon status-disabled">○</span>
+      <span>{{ addonService.stats().disabled }} Disabled</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-icon status-outdated">▲</span>
+      <span>{{ addonService.stats().outdated }} Updates</span>
+    </div>
+  </div>
+
+  <div class="addon-table">
+    <div class="table-header">
+      <div class="col-status">Status</div>
+      <div class="col-name">Name</div>
+      <div class="col-version">Version</div>
+      <div class="col-branch">Branch</div>
+      <div class="col-updated">Last Updated</div>
+      <div class="col-actions">Actions</div>
+    </div>
+
+    @for (addon of addonService.addons$(); track addon.id) {
+    <div class="table-row" [class]="getStatusClass(addon.status)">
+      <div class="col-status">
+        <span class="status-icon">{{ getStatusIcon(addon.status) }}</span>
+      </div>
+      <div class="col-name">
+        <div class="addon-name">{{ addon.name }}</div>
+        @if (addon.source === 'git' && addon.sourceUrl) {
+        <div class="addon-source">
+          <a [href]="addon.sourceUrl" target="_blank">{{ addon.sourceUrl }}</a>
+        </div>
+        }
+      </div>
+      <div class="col-version">{{ addon.version }}</div>
+      <div class="col-branch">
+        @if (addon.availableBranches && addon.availableBranches.length > 1) {
+        <select [value]="addon.branch" (change)="addonService.switchBranch(addon.id, $any($event.target).value)"
+          class="branch-select">
+          @for (branch of addon.availableBranches; track branch) {
+          <option [value]="branch">{{ branch }}</option>
+          }
+        </select>
+        } @else {
+        <span class="text-muted">{{ addon.branch || '—' }}</span>
+        }
+      </div>
+      <div class="col-updated">
+        {{ addon.lastUpdated | date: 'short' }}
+      </div>
+      <div class="col-actions">
+        <div class="action-buttons">
+          @if (addon.status === 'outdated') {
+          <button class="action-btn primary" (click)="addonService.updateAddon(addon.id)" title="Update">
+            Update
+          </button>
+          }
+          <button class="action-btn" (click)="addonService.toggleStatus(addon.id)"
+            [title]="addon.status === 'enabled' ? 'Disable' : 'Enable'">
+            {{ addon.status === 'enabled' ? 'Disable' : 'Enable' }}
+          </button>
+          <button class="action-btn danger" (click)="addonService.removeAddon(addon.id)" title="Remove">
+            Remove
+          </button>
+        </div>
+      </div>
+    </div>
+    }
   </div>
 </div>
