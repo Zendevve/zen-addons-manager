@@ -9,8 +9,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "electron:start": "electron . --dev",
-    "electron:prod": "ng build && electron .",
-    "package": "ng build && electron-builder build --win"
+    "electron:prod": "ng build --base-href ./ && electron .",
+    "package": "ng build --base-href ./ && electron-builder build --win"
   },
   "prettier": {
     "printWidth": 100,
@@ -52,5 +52,24 @@
     "tailwindcss": "^4.1.17",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"
+  },
+  "build": {
+    "appId": "com.zenaddons.manager",
+    "productName": "Zen Addons Manager",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "main.cjs",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

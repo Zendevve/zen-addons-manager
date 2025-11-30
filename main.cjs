@@ -346,7 +346,7 @@ function createWindow() {
     show: false
   });
 
-  const distPath = path.join(__dirname, 'dist', 'index.html');
+  const distPath = path.join(__dirname, 'dist', 'addon-manager', 'browser', 'index.html');
   const isDev = process.argv.includes('--dev');
 
   if (isDev) {
