@@ -4,7 +4,132 @@
     <p class="subtitle">Configure your addon manager</p>
   </header>
 
-  <div class="placeholder">
-    <p>🚧 Settings coming soon...</p>
+  <div class="settings-sections">
+    <!-- Addon Directory -->
+    <div class="section">
+      <button class="section-header" (click)="toggleSection('directory')">
+        <span class="section-title">Addon Directory</span>
+        <span class="expand-icon">{{ isSectionExpanded('directory') ? '▼' : '▶' }}</span>
+      </button>
+
+      @if (isSectionExpanded('directory')) {
+      <div class="section-content">
+        <p class="section-description">
+          Set the location where your WoW addons are installed.
+        </p>
+
+        <div class="directory-picker">
+          <div class="current-path">
+            <label class="label">Current Path</label>
+            <div class="path-display">{{ currentDirectory() }}</div>
+          </div>
+          <button class="primary-button" (click)="changeDirectory()">
+            Change Directory
+          </button>
+        </div>
+      </div>
+      }
+    </div>
+
+    <!-- Import/Export -->
+    <div class="section">
+      <button class="section-header" (click)="toggleSection('import-export')">
+        <span class="section-title">Import / Export</span>
+        <span class="expand-icon">{{ isSectionExpanded('import-export') ? '▼' : '▶' }}</span>
+      </button>
+
+      @if (isSectionExpanded('import-export')) {
+      <div class="section-content">
+        <p class="section-description">
+          Backup your addon list or import from another installation.
+        </p>
+
+        <div class="import-export-buttons">
+          <button class="secondary-button" (click)="exportAddons()">
+            Export Addon List
+          </button>
+          <label class="secondary-button file-input-label">
+            Import Addon List
+            <input type="file" accept=".json" (change)="importAddons($event)" class="file-input" />
+          </label>
+        </div>
+
+        <div class="info-box">
+          <strong>Note:</strong> Export creates a JSON file with your addon list.
+          Importing will merge addons with your current installation.
+        </div>
+      </div>
+      }
+    </div>
+
+    <!-- App Configuration -->
+    <div class="section">
+      <button class="section-header" (click)="toggleSection('config')">
+        <span class="section-title">App Configuration</span>
+        <span class="expand-icon">{{ isSectionExpanded('config') ? '▼' : '▶' }}</span>
+      </button>
+
+      @if (isSectionExpanded('config')) {
+      <div class="section-content">
+        <div class="config-options">
+          <div class="config-item">
+            <div class="config-info">
+              <label class="label">Auto-Update Check</label>
+              <p class="description">Automatically check for addon updates on startup</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" [checked]="autoUpdate()" (change)="autoUpdate.set(!autoUpdate())" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="config-item">
+            <div class="config-info">
+              <label class="label">Show Beta Versions</label>
+              <p class="description">Include pre-release versions in updates</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" [checked]="showBetaVersions()"
+                (change)="showBetaVersions.set(!showBetaVersions())" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="config-item">
+            <div class="config-info">
+              <label class="label">Theme</label>
+              <p class="description">Choose your preferred color scheme</p>
+            </div>
+            <select class="select-input" [value]="theme()" (change)="theme.set($any($event.target).value)">
+              <option value="dark">Dark</option>
+              <option value="light">Light (Coming Soon)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      }
+    </div>
+
+    <!-- About -->
+    <div class="section">
+      <button class="section-header" (click)="toggleSection('about')">
+        <span class="section-title">About</span>
+        <span class="expand-icon">{{ isSectionExpanded('about') ? '▼' : '▶' }}</span>
+      </button>
+
+      @if (isSectionExpanded('about')) {
+      <div class="section-content">
+        <div class="about-info">
+          <h3>Zen Addons Manager</h3>
+          <p class="version">Version 1.0.0</p>
+          <p class="copyright">© 2024 Zen Addons Manager</p>
+          <p class="description-text">
+            A clean, minimal addon manager for World of Warcraft.
+            Built with Angular and Electron.
+          </p>
+        </div>
+      </div>
+      }
+    </div>
   </div>
 </div>
