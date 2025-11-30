@@ -83,4 +83,20 @@ export class ElectronService {
     }
     return await this.ipcRenderer.invoke('git-check-updates', addonPath);
   }
+
+  // ===== Smart Installer =====
+
+  async installAddon(url: string, addonsFolder: string, method: 'git' | 'zip'): Promise<{ success: boolean; addonName?: string; addonPath?: string; error?: string }> {
+    if (!this.isElectron()) {
+      return { success: false, error: 'Not running in Electron' };
+    }
+    return await this.ipcRenderer.invoke('install-addon', { url, addonsFolder, method });
+  }
+
+  async validateAddon(addonPath: string): Promise<{ success: boolean; valid?: boolean; error?: string }> {
+    if (!this.isElectron()) {
+      return { success: false, error: 'Not running in Electron' };
+    }
+    return await this.ipcRenderer.invoke('validate-addon', addonPath);
+  }
 }

@@ -4,6 +4,21 @@
     <p class="subtitle">Discover and install new addons from the catalogue</p>
   </header>
 
+  <div class="install-url-section">
+    <div class="url-input-group">
+      <input type="text" placeholder="Paste GitHub URL or direct download link..." class="url-input"
+        [value]="manualUrl()" (input)="manualUrl.set($any($event.target).value)" />
+      <button class="install-url-btn" (click)="installFromUrl()" [disabled]="!manualUrl() || isInstalling()">
+        {{ isInstalling() ? 'Installing...' : 'Install from URL' }}
+      </button>
+    </div>
+    @if (installMessage(); as msg) {
+    <div class="install-message" [class.error]="msg.type === 'error'">
+      {{ msg.text }}
+    </div>
+    }
+  </div>
+
   <div class="search-section">
     <input type="search" placeholder="Search addons, authors, or descriptions..." class="search-input"
       [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)" />
