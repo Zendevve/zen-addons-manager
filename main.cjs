@@ -330,6 +330,30 @@ ipcMain.handle('install-addon', async (event, { url: addonUrl, addonsFolder, met
   }
 });
 
+// Auto-detect WoW installation folder
+ipcMain.handle('auto-detect-wow-folder', async () => {
+  const possiblePaths = [
+    'C:/Program Files (x86)/World of Warcraft',
+    'C:/Program Files/World of Warcraft',
+    'D:/Games/World of Warcraft',
+    'D:/Games/WoW',
+    'C:/Games/World of Warcraft',
+    'E:/Games/World of Warcraft',
+  ];
+
+  for (const basePath of possiblePaths) {
+    try {
+      const addonsPath = path.join(basePath, 'Interface', 'AddOns');
+      await fs.access(addonsPath);
+      return { success: true, path: addonsPath };
+    } catch {
+      // Path doesn't exist, continue
+    }
+  }
+
+  return { success: false, error: 'WoW installation not found' };
+});
+
 // ===== Helper Functions =====
 
 function parseTocFile(addonName, tocContent, addonPath) {

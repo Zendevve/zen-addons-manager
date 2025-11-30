@@ -46,8 +46,15 @@ export class BrowseComponent {
     const isGit = url.includes('github.com') && !url.includes('/archive/') && !url.endsWith('.zip');
     const method = isGit ? 'git' : 'zip';
 
-    // Get addons folder (should be set in settings)
-    const addonsFolder = 'D:/Games/WoW/3.3.5a/Interface/AddOns'; // TODO: Get from settings
+    // Get addons folder from service
+    const addonsFolder = this.addonService.addonsDirectory$();
+    if (!addonsFolder) {
+      this.installMessage.set({
+        text: '❌ Please set WoW directory in Settings first',
+        type: 'error'
+      });
+      return;
+    }
 
     this.isInstalling.set(true);
     this.installMessage.set(null);
@@ -66,7 +73,8 @@ export class BrowseComponent {
       // Clear message after 5 seconds
       setTimeout(() => this.installMessage.set(null), 5000);
 
-      // TODO: Refresh addon list in Manage page
+      // Reload addons in Manage page
+      await this.addonService.loadAddonsFromDisk();
     } else {
       this.installMessage.set({
         text: `❌ Installation failed: ${result.error}`,

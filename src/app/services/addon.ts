@@ -1,4 +1,5 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
+import { ElectronService } from './electron';
 
 export interface Addon {
   id: string;
@@ -10,6 +11,9 @@ export interface Addon {
   sourceUrl?: string;
   status: 'enabled' | 'disabled' | 'outdated';
   lastUpdated: Date;
+  path?: string;
+  author?: string;
+  description?: string;
 }
 
 export interface CatalogueAddon {
@@ -23,69 +27,77 @@ export interface CatalogueAddon {
   downloads?: number;
 }
 
-
 @Injectable({
   providedIn: 'root',
 })
 export class AddonService {
-  // State
-  private addons = signal<Addon[]>([
-    {
-      id: '1',
-      name: 'Deadly Boss Mods',
-      version: '10.0.52',
-      source: 'git',
-      sourceUrl: 'https://github.com/DeadlyBossMods/DBM-Warmane',
-      status: 'enabled',
-      branch: 'main',
-      availableBranches: ['main', 'develop'],
-      lastUpdated: new Date('2024-01-15')
-    },
-    {
-      id: '2',
-      name: 'QuestHelper',
-      version: '1.4.0',
-      source: 'git',
-      sourceUrl: 'https://github.com/AmanKJ/QuestHelper',
-      status: 'outdated',
-      branch: 'master',
-      availableBranches: ['master', 'dev'],
-      lastUpdated: new Date('2023-12-01')
-    },
-    {
-      id: '3',
-      name: 'Recount',
-      version: '3.5',
-      source: 'manual',
-      status: 'enabled',
-      lastUpdated: new Date('2024-02-01')
-    },
-    {
-      id: '4',
-      name: 'Bartender4',
-      version: '4.10.3',
-      source: 'git',
-      sourceUrl: 'https://github.com/Nevcairiel/Bartender4',
-      status: 'disabled',
-      branch: 'master',
-      availableBranches: ['master'],
-      lastUpdated: new Date('2024-01-20')
-    }
-  ]);
+  private electronService = inject(ElectronService);
 
-  // Computed
+  // State
+  private addonsDirectory = signal<string>('');
+  private addons = signal<Addon[]>([]);
+
   readonly addons$ = this.addons.asReadonly();
+  readonly addonsDirectory$ = this.addonsDirectory.asReadonly();
+
   readonly stats = computed(() => {
-    const addons = this.addons();
+    const all = this.addons();
     return {
-      total: addons.length,
-      enabled: addons.filter(a => a.status === 'enabled').length,
-      disabled: addons.filter(a => a.status === 'disabled').length,
-      outdated: addons.filter(a => a.status === 'outdated').length
+      total: all.length,
+      enabled: all.filter(a => a.status === 'enabled').length,
+      disabled: all.filter(a => a.status === 'disabled').length,
+      outdated: all.filter(a => a.status === 'outdated').length,
     };
   });
 
-  // Actions
+  // Load real addons from disk
+  async loadAddonsFromDisk() {
+    const directory = this.addonsDirectory();
+    if (!directory) {
+      console.warn('No addons directory set');
+      return;
+    }
+
+    const result = await this.electronService.scanAddonFolder(directory);
+
+    if (!result.success || !result.addons) {
+      console.error('Failed to scan addons:', result.error);
+      return;
+    }
+
+    // Convert scanned addons to our Addon interface
+    const loadedAddons: Addon[] = result.addons.map((scanned: any) => ({
+      id: scanned.name,
+      name: scanned.title || scanned.name,
+      version: scanned.version || 'Unknown',
+      source: 'manual' as const,
+      status: 'enabled' as const,
+      lastUpdated: new Date(),
+      path: scanned.path,
+      author: scanned.author,
+      description: scanned.description
+    }));
+
+    this.addons.set(loadedAddons);
+  }
+
+  // Set addons directory
+  setAddonsDirectory(path: string) {
+    this.addonsDirectory.set(path);
+    localStorage.setItem('zen-addons-directory', path);
+    // Auto-load addons when directory is set
+    this.loadAddonsFromDisk();
+  }
+
+  // Initialize from localStorage
+  initializeFromStorage() {
+    const savedDirectory = localStorage.getItem('zen-addons-directory');
+    if (savedDirectory) {
+      this.addonsDirectory.set(savedDirectory);
+      this.loadAddonsFromDisk();
+    }
+  }
+
   toggleStatus(id: string) {
     this.addons.update(addons =>
       addons.map(addon =>
@@ -96,28 +108,48 @@ export class AddonService {
     );
   }
 
-  removeAddon(id: string) {
-    this.addons.update(addons => addons.filter(a => a.id !== id));
+  async removeAddon(id: string) {
+    const addon = this.addons().find(a => a.id === id);
+    if (!addon?.path) return;
+
+    const result = await this.electronService.deleteAddon(addon.path);
+    if (result.success) {
+      this.addons.update(addons => addons.filter(a => a.id !== id));
+    }
   }
 
-  updateAddon(id: string) {
-    this.addons.update(addons =>
-      addons.map(addon =>
-        addon.id === id
-          ? { ...addon, status: 'enabled', lastUpdated: new Date() }
-          : addon
-      )
-    );
+  async updateAddon(id: string) {
+    const addon = this.addons().find(a => a.id === id);
+    if (!addon?.path) return;
+
+    if (addon.source === 'git') {
+      const result = await this.electronService.gitPull(addon.path);
+      if (result.success) {
+        this.addons.update(addons =>
+          addons.map(a =>
+            a.id === id
+              ? { ...a, status: 'enabled', lastUpdated: new Date() }
+              : a
+          )
+        );
+      }
+    }
   }
 
-  switchBranch(id: string, branch: string) {
-    this.addons.update(addons =>
-      addons.map(addon =>
-        addon.id === id
-          ? { ...addon, branch, lastUpdated: new Date() }
-          : addon
-      )
-    );
+  async switchBranch(id: string, branch: string) {
+    const addon = this.addons().find(a => a.id === id);
+    if (!addon?.path) return;
+
+    const result = await this.electronService.gitCheckout(addon.path, branch);
+    if (result.success) {
+      this.addons.update(addons =>
+        addons.map(a =>
+          a.id === id
+            ? { ...a, branch, lastUpdated: new Date() }
+            : a
+        )
+      );
+    }
   }
 
   // Catalogue
@@ -190,18 +222,25 @@ export class AddonService {
     return ['All', ...Array.from(cats)];
   });
 
-  installFromCatalogue(catalogueAddon: CatalogueAddon) {
-    const newAddon: Addon = {
-      id: `addon-${Date.now()}`,
-      name: catalogueAddon.name,
-      version: catalogueAddon.latestVersion,
-      source: 'git',
-      sourceUrl: catalogueAddon.sourceUrl,
-      status: 'enabled',
-      branch: 'main',
-      availableBranches: ['main'],
-      lastUpdated: new Date()
-    };
-    this.addons.update(addons => [...addons, newAddon]);
+  async installFromCatalogue(catalogueAddon: CatalogueAddon) {
+    const directory = this.addonsDirectory();
+    if (!directory) {
+      console.error('No addons directory set');
+      return;
+    }
+
+    const isGit = catalogueAddon.sourceUrl.includes('github.com');
+    const method = isGit ? 'git' : 'zip';
+
+    const result = await this.electronService.installAddon(
+      catalogueAddon.sourceUrl,
+      directory,
+      method
+    );
+
+    if (result.success) {
+      // Reload addons to include the newly installed one
+      await this.loadAddonsFromDisk();
+    }
   }
 }

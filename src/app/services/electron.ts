@@ -99,4 +99,11 @@ export class ElectronService {
     }
     return await this.ipcRenderer.invoke('validate-addon', addonPath);
   }
+
+  async autoDetectWowFolder(): Promise<{ success: boolean; path?: string; error?: string }> {
+    if (!this.isElectron()) {
+      return { success: false, error: 'Not running in Electron' };
+    }
+    return await this.ipcRenderer.invoke('auto-detect-wow-folder');
+  }
 }

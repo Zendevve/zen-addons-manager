@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { AddonService } from '../../services/addon';
 import { ElectronService } from '../../services/electron';
 
@@ -8,16 +8,31 @@ import { ElectronService } from '../../services/electron';
   templateUrl: './settings.html',
   styleUrl: './settings.css'
 })
-export class SettingsComponent {
+export class SettingsComponent implements OnInit {
   addonService = inject(AddonService);
   electronService = inject(ElectronService);
 
-  currentDirectory = signal('D:/Games/WoW/3.3.5a/Interface/AddOns');
+  currentDirectory = signal('');
   autoUpdate = signal(true);
   showBetaVersions = signal(false);
   theme = signal<'dark' | 'light'>('dark');
 
   expandedSections = signal<Set<string>>(new Set(['directory']));
+
+  async ngOnInit() {
+    // Try to load from localStorage first
+    const saved = this.addonService.addonsDirectory$();
+    if (saved) {
+      this.currentDirectory.set(saved);
+    } else {
+      // Auto-detect WoW folder
+      const result = await this.electronService.autoDetectWowFolder();
+      if (result.success && result.path) {
+        this.currentDirectory.set(result.path);
+        this.addonService.setAddonsDirectory(result.path);
+      }
+    }
+  }
 
   toggleSection(section: string) {
     this.expandedSections.update(sections => {
@@ -39,6 +54,7 @@ export class SettingsComponent {
     const dir = await this.electronService.openDirectoryDialog();
     if (dir) {
       this.currentDirectory.set(dir);
+      this.addonService.setAddonsDirectory(dir);
     }
   }
 
