@@ -1,0 +1,28 @@
+.page {
+  padding: 2rem;
+  max-width: 1200px;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.page-header h1 {
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: #e5e5e5;
+  margin: 0 0 0.5rem 0;
+}
+
+.subtitle {
+  color: #a0a0a0;
+  font-size: 0.9375rem;
+  margin: 0;
+}
+
+.placeholder {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #a0a0a0;
+  font-size: 1.125rem;
+}

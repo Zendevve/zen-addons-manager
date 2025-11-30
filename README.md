@@ -1,51 +1,81 @@
 # Zen Addons Manager
 
-A modern, Electron-based World of Warcraft addon manager built with Angular and Tailwind CSS.
+A clean, minimal World of Warcraft addon manager built with Angular, Tailwind CSS, and Electron.
 
 ## Features
 
-- **Addon Management**: Install, enable, disable, and delete addons.
-- **Multi-Version Support**: Manage addons for different WoW versions (WotLK, Cataclysm, MoP, etc.).
-- **Git Integration**: Install addons directly from Git repositories and switch branches.
-- **Import/Export**: Backup and share your addon lists via JSON.
-- **Sub-addons**: View and manage nested addon modules.
-- **Modern UI**: sleek, dark-themed interface with responsive design.
+- **Clean Interface**: Sidebar navigation (Dashboard, Manage, Browse, Settings)
+- **Addon Management**: Install, update, and remove addons
+- **Git Support**: Install addons from Git repositories with branch switching
+- **Auto-Detection**: Automatically detect WoW installations and addon folders
+- **Import/Export**: Backup and share your addon lists
+- **Dark Theme**: Calm, tool-like aesthetic with consistent spacing
 
 ## Development
 
 ### Prerequisites
 
-- Node.js
+- Node.js (v18+)
 - npm
 
 ### Setup
 
-1.  Install dependencies:
-    ```bash
-    npm install
-    ```
+```bash
+npm install
+```
 
 ### Running the App
 
-**Development Mode:**
-Run the Angular dev server and Electron app concurrently:
-```bash
-# Terminal 1
-npm run dev
+**Development Mode** (requires two terminals):
 
-# Terminal 2
+```bash
+# Terminal 1: Angular dev server
+npm start
+
+# Terminal 2: Electron app
 npm run electron:start
 ```
 
-**Production Mode:**
-Build the Angular app and run it in Electron:
+**Production Mode**:
+
 ```bash
 npm run electron:prod
 ```
 
-### Packaging
+### Building
 
-To create a Windows installer (`.exe`):
+To create a Windows installer:
+
 ```bash
 npm run package
 ```
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── components/
+│   │   └── sidebar/          # Left navigation
+│   ├── pages/
+│   │   ├── dashboard/        # Overview page
+│   │   ├── manage/           # Addon management
+│   │   ├── browse/           # Addon catalogue
+│   │   └── settings/         # App configuration
+│   └── services/
+│       ├── addon.service.ts  # State management
+│       └── electron.service.ts # IPC wrapper
+└── styles.css                # Global styles (Tailwind)
+```
+
+## Design Philosophy
+
+This app follows strict UX principles:
+
+- **Keep decisions small**: One action per moment
+- **Reduce steps**: Auto-detect everything possible
+- **Show only what matters**: Hide complexity behind details
+- **Predictable navigation**: Always know where you are
+- **Quick feedback**: Toast notifications for all actions
+
+See [design_guidelines.md](design_guidelines.md) for full details.

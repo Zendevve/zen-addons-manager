@@ -1,0 +1,37 @@
+<div class="dashboard">
+  <header class="page-header">
+    <h1>Dashboard</h1>
+    <p class="subtitle">Quick overview of your addons</p>
+  </header>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Addon Directory</div>
+      <div class="stat-value directory">{{ stats.directory }}</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Installed Addons</div>
+      <div class="stat-value">{{ stats.installedCount }}</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Updates Available</div>
+      <div class="stat-value" [class.has-updates]="stats.updatesAvailable > 0">
+        {{ stats.updatesAvailable }}
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Last Check</div>
+      <div class="stat-value">{{ stats.lastCheck | date: 'short' }}</div>
+    </div>
+  </div>
+
+  <div class="action-buttons">
+    <button class="primary-button">Check for Updates</button>
+    <button class="secondary-button" routerLink="/manage">Manage Addons</button>
+    <button class="secondary-button" routerLink="/browse">Browse Addons</button>
+    <button class="secondary-button" routerLink="/settings">Settings</button>
+  </div>
+</div>
