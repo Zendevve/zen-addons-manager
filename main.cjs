@@ -235,87 +235,83 @@ ipcMain.handle('install-addon', async (event, { url: addonUrl, addonsFolder, met
       const finalPath = path.join(addonsFolder, fixResult.tocName);
 
       // Check if already exists
+    } else {
+      // ZIP download
+      const zipPath = path.join(tempDir, 'addon.zip');
+      const downloadResult = await axios({
+        method: 'GET',
+        url: addonUrl,
+        responseType: 'arraybuffer'
+      });
+
+      await fs.writeFile(zipPath, downloadResult.data);
+
+      // Extract ZIP
+      const zip = new AdmZip(zipPath);
+      const extractPath = path.join(tempDir, 'extracted');
+      zip.extractAllTo(extractPath, true);
+
+      // Find .toc file in extracted content
+      const entries = await fs.readdir(extractPath, { withFileTypes: true });
+      let addonFolder = extractPath;
+
+      // If only one folder, go into it
+      if (entries.length === 1 && entries[0].isDirectory()) {
+        addonFolder = path.join(extractPath, entries[0].name);
+      }
+
+      // Fix structure
+      const tocInfo = await findTocFile(addonFolder);
+      if (!tocInfo) {
+        throw new Error('No .toc file found in ZIP');
+      }
+
+      // Remove -master, -main, -develop suffixes
+      let cleanName = tocInfo.tocName;
+      const tocDir = path.dirname(tocInfo.tocPath);
+      const currentName = path.basename(tocDir);
+
+      // Auto-remove common suffixes
+      const suffixes = ['-master', '-main', '-develop', '-trunk'];
+      for (const suffix of suffixes) {
+        if (currentName.endsWith(suffix)) {
+          cleanName = currentName.replace(suffix, '');
+          break;
+        }
+      }
+
+      const finalPath = path.join(addonsFolder, cleanName);
+
+      // Check if already exists
       try {
-        // ZIP download
-        const zipPath = path.join(tempDir, 'addon.zip');
-        const downloadResult = await axios({
-          method: 'GET',
-          url: addonUrl,
-          responseType: 'arraybuffer'
-        });
+        await fs.access(finalPath);
+        return { success: false, error: `Addon "${cleanName}" already installed` };
+      } catch {
+        // Doesn't exist, proceed
+      }
 
-        await fs.writeFile(zipPath, downloadResult.data);
+      // Rename folder to match .toc
+      const renamedPath = path.join(path.dirname(tocDir), cleanName);
+      if (tocDir !== renamedPath) {
+        await fs.rename(tocDir, renamedPath);
+      }
 
-        // Extract ZIP
-        const zip = new AdmZip(zipPath);
-        const extractPath = path.join(tempDir, 'extracted');
-        zip.extractAllTo(extractPath, true);
+      // Move to AddOns folder
+      await fs.rename(renamedPath, finalPath);
 
-        // Find .toc file in extracted content
-        const entries = await fs.readdir(extractPath, { withFileTypes: true });
-        let addonFolder = extractPath;
+      // Cleanup temp
+      await fs.rm(tempDir, { recursive: true, force: true });
 
-        // If only one folder, go into it
-        if (entries.length === 1 && entries[0].isDirectory()) {
-          addonFolder = path.join(extractPath, entries[0].name);
-        }
-
-        // Fix structure
-        const tocInfo = await findTocFile(addonFolder);
-        if (!tocInfo) {
-          throw new Error('No .toc file found in ZIP');
-        }
-
-        // Remove -master, -main, -develop suffixes
-        let cleanName = tocInfo.tocName;
-        const tocDir = path.dirname(tocInfo.tocPath);
-        const currentName = path.basename(tocDir);
-
-        // Auto-remove common suffixes
-        const suffixes = ['-master', '-main', '-develop', '-trunk'];
-        for (const suffix of suffixes) {
-          if (currentName.endsWith(suffix)) {
-            cleanName = currentName.replace(suffix, '');
-            break;
-          }
-        }
-
-        const finalPath = path.join(addonsFolder, cleanName);
-
-        // Check if already exists
-        try {
-          await fs.access(finalPath);
-          return { success: false, error: `Addon "${cleanName}" already installed` };
-          try {
-            await fs.rm(tempDir, { recursive: true, force: true });
-          } catch { }
-
-          return { success: false, error: error.message };
-        }
-  });
-
-// Auto-detect WoW installation folder
-ipcMain.handle('auto-detect-wow-folder', async () => {
-  const possiblePaths = [
-    'C:/Program Files (x86)/World of Warcraft',
-    'C:/Program Files/World of Warcraft',
-    'D:/Games/World of Warcraft',
-    'D:/Games/WoW',
-    'C:/Games/World of Warcraft',
-    'E:/Games/World of Warcraft',
-  ];
-
-  for (const basePath of possiblePaths) {
-    try {
-      const addonsPath = path.join(basePath, 'Interface', 'AddOns');
-      await fs.access(addonsPath);
-      return { success: true, path: addonsPath };
-    } catch {
-      // Path doesn't exist, continue
+      return { success: true, addonName: cleanName, addonPath: finalPath };
     }
-  }
+  } catch (error) {
+    // Cleanup temp on error
+    try {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    } catch { }
 
-  return { success: false, error: 'WoW installation not found' };
+    return { success: false, error: error.message };
+  }
 });
 
 // ===== Helper Functions =====
