@@ -1,6 +1,7 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { AddonService, CatalogueAddon } from '../../services/addon';
 import { ElectronService } from '../../services/electron';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-browse',
@@ -11,12 +12,12 @@ import { ElectronService } from '../../services/electron';
 export class BrowseComponent {
   addonService = inject(AddonService);
   electronService = inject(ElectronService);
+  toastService = inject(ToastService);
 
   searchTerm = signal('');
   selectedCategory = signal('All');
   manualUrl = signal('');
   isInstalling = signal(false);
-  installMessage = signal<{ text: string; type: 'success' | 'error' } | null>(null);
 
   filteredAddons = computed(() => {
     const search = this.searchTerm().toLowerCase();
@@ -49,37 +50,24 @@ export class BrowseComponent {
     // Get addons folder from service
     const addonsFolder = this.addonService.addonsDirectory$();
     if (!addonsFolder) {
-      this.installMessage.set({
-        text: '❌ Please set WoW directory in Settings first',
-        type: 'error'
-      });
+      this.toastService.error('Please set WoW directory in Settings first');
       return;
     }
 
     this.isInstalling.set(true);
-    this.installMessage.set(null);
 
     const result = await this.electronService.installAddon(url, addonsFolder, method);
 
     this.isInstalling.set(false);
 
     if (result.success && result.addonName) {
-      this.installMessage.set({
-        text: `✅ Successfully installed "${result.addonName}"`,
-        type: 'success'
-      });
+      this.toastService.success(`Successfully installed "${result.addonName}"`);
       this.manualUrl.set('');
-
-      // Clear message after 5 seconds
-      setTimeout(() => this.installMessage.set(null), 5000);
 
       // Reload addons in Manage page
       await this.addonService.loadAddonsFromDisk();
     } else {
-      this.installMessage.set({
-        text: `❌ Installation failed: ${result.error}`,
-        type: 'error'
-      });
+      this.toastService.error(`Installation failed: ${result.error}`);
     }
   }
 }
