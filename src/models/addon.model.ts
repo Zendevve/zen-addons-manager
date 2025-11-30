@@ -14,3 +14,10 @@ export interface Addon {
   installProgress?: number;
   brokenReason?: string;
 }
+
+export interface Installation {
+  id: string;
+  name: string;
+  path: string;
+  addons: Addon[];
+}

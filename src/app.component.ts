@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@a
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AddonService } from './services/addon.service';
-import { Addon, AddonCategory, AddonStatus } from './models/addon.model';
+import { Addon, AddonCategory, AddonStatus, Installation } from './models/addon.model';
 
 type SortKey = 'name' | 'version' | 'author';
 type ActionType = 'update' | 'repair' | 'delete';
@@ -17,8 +17,13 @@ const DEFAULT_CATEGORIES = ['UI', 'Combat', 'Utility', 'Economy', 'Questing', 'P
 })
 export class AppComponent {
   addonService = inject(AddonService);
-  addons = this.addonService.addons.asReadonly();
   
+  // State from service
+  installations = this.addonService.installations.asReadonly();
+  activeInstallation = this.addonService.activeInstallation;
+  addons = this.addonService.addons;
+  
+  // Local UI state
   newRepoUrl = signal('');
   selectedCategory = signal<AddonCategory | 'All'>('All');
   selectedAddonIds = signal<Set<string>>(new Set());
@@ -136,6 +141,14 @@ export class AppComponent {
         this.addonService.bulkDelete(this.selectedAddonIds());
         this.selectedAddonIds.set(new Set());
     }
+  }
+  
+  changeInstallation(event: Event) {
+    const selectElement = event.target as HTMLSelectElement;
+    this.addonService.switchInstallation(selectElement.value);
+    this.selectedAddonIds.set(new Set());
+    this.selectedCategory.set('All');
+    this.searchTerm.set('');
   }
 
   setSortBy(key: SortKey) {
