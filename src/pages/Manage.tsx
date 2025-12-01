@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Check, X, AlertTriangle, RefreshCw, Trash2, FolderOpen } from 'lucide-react'
 import { electronService } from '@/services/electron'
@@ -53,12 +54,10 @@ export function Manage() {
     const result = await electronService.scanAddonFolder(addonFolder)
 
     if (result.success && result.addons) {
-      // Transform the addon data to include status
+      // Transform the addon data to include unique ID if needed
       const transformedAddons = result.addons.map((addon, index) => ({
         ...addon,
-        id: `${addon.name}-${index}`,
-        status: 'enabled' as const, // Default to enabled
-        lastUpdated: new Date().toISOString(),
+        id: addon.id || `${addon.name}-${index}`,
       }))
       setAddons(transformedAddons)
     }
@@ -87,14 +86,41 @@ export function Manage() {
     setOperatingAddonId(null)
   }
 
-  const toggleStatus = (addonId: string) => {
-    setAddons(prev =>
-      prev.map(a =>
-        a.id === addonId
-          ? { ...a, status: a.status === 'enabled' ? ('disabled' as const) : ('enabled' as const) }
+  const toggleStatus = async (addon: Addon) => {
+    setOperatingAddonId(addon.id)
+    const newStatus = addon.status === 'enabled' ? false : true
+    const result = await electronService.toggleAddon(addon.path, newStatus)
+
+    if (result.success) {
+      await loadAddons()
+    }
+    setOperatingAddonId(null)
+  }
+
+  const fetchBranches = async (addon: Addon) => {
+    if (addon.availableBranches && addon.availableBranches.length > 0) return
+
+    setOperatingAddonId(addon.id)
+    const result = await electronService.getBranches(addon.path)
+
+    if (result.success && result.branches) {
+      setAddons(prev => prev.map(a =>
+        a.id === addon.id
+          ? { ...a, availableBranches: result.branches }
           : a
-      )
-    )
+      ))
+    }
+    setOperatingAddonId(null)
+  }
+
+  const switchBranch = async (addon: Addon, branch: string) => {
+    setOperatingAddonId(addon.id)
+    const result = await electronService.switchBranch(addon.path, branch)
+
+    if (result.success) {
+      await loadAddons()
+    }
+    setOperatingAddonId(null)
   }
 
   const stats = {
@@ -213,20 +239,48 @@ export function Manage() {
                     {new Date(addon.lastUpdated).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2 items-center">
+                      {addon.source === 'git' && (
+                        <div className="w-32">
+                          <Select
+                            value={addon.branch || ''}
+                            onValueChange={(val) => switchBranch(addon, val)}
+                            onOpenChange={(open) => {
+                              if (open) fetchBranches(addon)
+                            }}
+                            disabled={operatingAddonId === addon.id}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Branch" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {addon.availableBranches ? (
+                                addon.availableBranches.map(branch => (
+                                  <SelectItem key={branch} value={branch} className="text-xs">
+                                    {branch}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value={addon.branch || 'master'} disabled>Loading...</SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                       {addon.source === 'git' && (
                         <Button
                           size="sm"
+                          variant="outline"
                           onClick={() => updateAddon(addon)}
                           disabled={operatingAddonId === addon.id}
                         >
-                          {operatingAddonId === addon.id ? 'Updating...' : 'Update'}
+                          {operatingAddonId === addon.id ? '...' : 'Pull'}
                         </Button>
                       )}
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => toggleStatus(addon.id)}
+                        onClick={() => toggleStatus(addon)}
                         disabled={operatingAddonId !== null}
                       >
                         {addon.status === 'enabled' ? 'Disable' : 'Enable'}

@@ -7,6 +7,7 @@ electron.contextBridge.exposeInMainWorld("electron", {
       "scan-addon-folder",
       "install-addon",
       "delete-addon",
+      "toggle-addon",
       "git-pull",
       "git-branches",
       "git-checkout",

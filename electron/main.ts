@@ -13,26 +13,35 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Types
+// Types
 interface Addon {
+  id: string;
   name: string;
   title: string;
   version: string;
   author: string;
   description: string;
   path: string;
+  status: 'enabled' | 'disabled' | 'outdated';
+  lastUpdated: string;
+  source?: 'git' | 'zip';
+  branch?: string;
 }
 
 // ===== Helper Functions =====
 
-function parseTocFile(addonName: string, tocContent: string, addonPath: string): Addon {
+function parseTocFile(addonName: string, tocContent: string, addonPath: string, status: 'enabled' | 'disabled', stats: fs.Stats): Addon {
   const lines = tocContent.split('\n');
   const addon: Addon = {
+    id: addonName,
     name: addonName,
     title: addonName,
     version: 'Unknown',
     author: 'Unknown',
     description: '',
-    path: addonPath
+    path: addonPath,
+    status,
+    lastUpdated: stats.mtime.toISOString()
   };
 
   for (const line of lines) {
@@ -47,6 +56,14 @@ function parseTocFile(addonName: string, tocContent: string, addonPath: string):
       addon.description = trimmed.replace('## Notes:', '').trim();
     }
   }
+
+  // Check for git
+  try {
+    const gitPath = path.join(addonPath, '.git');
+    // We can't easily check sync here, but we'll assume if .git exists it's git
+    // For now, we'll leave source undefined and let the scanner fill it if needed
+    // or we can check it in the scanner loop
+  } catch { }
 
   return addon;
 }
@@ -124,19 +141,73 @@ function setupIpcHandlers() {
         if (entry.isDirectory()) {
           const addonPath = path.join(folderPath, entry.name);
           const tocPath = path.join(addonPath, `${entry.name}.toc`);
+          const disabledTocPath = path.join(addonPath, `${entry.name}.toc.disabled`);
+
+          let finalTocPath = tocPath;
+          let status: 'enabled' | 'disabled' = 'enabled';
 
           try {
             await fs.access(tocPath);
-            const tocContent = await fs.readFile(tocPath, 'utf-8');
-            const addon = parseTocFile(entry.name, tocContent, addonPath);
+          } catch {
+            // Try disabled
+            try {
+              await fs.access(disabledTocPath);
+              finalTocPath = disabledTocPath;
+              status = 'disabled';
+            } catch {
+              // Neither exists
+              continue;
+            }
+          }
+
+          try {
+            const stats = await fs.stat(finalTocPath);
+            const tocContent = await fs.readFile(finalTocPath, 'utf-8');
+            const addon = parseTocFile(entry.name, tocContent, addonPath, status, stats);
+
+            // Check if it's a git repo
+            try {
+              await fs.access(path.join(addonPath, '.git'));
+              addon.source = 'git';
+
+              // Get current branch
+              try {
+                const git = simpleGit(addonPath);
+                const branches = await git.branch();
+                addon.branch = branches.current;
+              } catch { }
+            } catch {
+              addon.source = 'zip';
+            }
+
             addons.push(addon);
           } catch (err) {
-            // No .toc file or error reading it, skip
+            // Error reading
           }
         }
       }
 
       return { success: true, addons };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Toggle Addon (Enable/Disable)
+  ipcMain.handle('toggle-addon', async (event, { path: addonPath, enable }) => {
+    try {
+      const dirName = path.basename(addonPath);
+      const tocPath = path.join(addonPath, `${dirName}.toc`);
+      const disabledTocPath = path.join(addonPath, `${dirName}.toc.disabled`);
+
+      if (enable) {
+        // Rename .toc.disabled -> .toc
+        await fs.rename(disabledTocPath, tocPath);
+      } else {
+        // Rename .toc -> .toc.disabled
+        await fs.rename(tocPath, disabledTocPath);
+      }
+      return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
     }

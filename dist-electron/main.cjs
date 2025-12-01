@@ -11,15 +11,18 @@ var _documentCurrentScript = typeof document !== "undefined" ? document.currentS
 const { app, BrowserWindow, ipcMain, dialog } = electron;
 const __filename$1 = url.fileURLToPath(typeof document === "undefined" ? require("url").pathToFileURL(__filename).href : _documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === "SCRIPT" && _documentCurrentScript.src || new URL("main.cjs", document.baseURI).href);
 const __dirname$1 = path.dirname(__filename$1);
-function parseTocFile(addonName, tocContent, addonPath) {
+function parseTocFile(addonName, tocContent, addonPath, status, stats) {
   const lines = tocContent.split("\n");
   const addon = {
+    id: addonName,
     name: addonName,
     title: addonName,
     version: "Unknown",
     author: "Unknown",
     description: "",
-    path: addonPath
+    path: addonPath,
+    status,
+    lastUpdated: stats.mtime.toISOString()
   };
   for (const line of lines) {
     const trimmed = line.trim();
@@ -32,6 +35,10 @@ function parseTocFile(addonName, tocContent, addonPath) {
     } else if (trimmed.startsWith("## Notes:")) {
       addon.description = trimmed.replace("## Notes:", "").trim();
     }
+  }
+  try {
+    const gitPath = path.join(addonPath, ".git");
+  } catch {
   }
   return addon;
 }
@@ -88,16 +95,57 @@ function setupIpcHandlers() {
         if (entry.isDirectory()) {
           const addonPath = path.join(folderPath, entry.name);
           const tocPath = path.join(addonPath, `${entry.name}.toc`);
+          const disabledTocPath = path.join(addonPath, `${entry.name}.toc.disabled`);
+          let finalTocPath = tocPath;
+          let status = "enabled";
           try {
             await fs.access(tocPath);
-            const tocContent = await fs.readFile(tocPath, "utf-8");
-            const addon = parseTocFile(entry.name, tocContent, addonPath);
+          } catch {
+            try {
+              await fs.access(disabledTocPath);
+              finalTocPath = disabledTocPath;
+              status = "disabled";
+            } catch {
+              continue;
+            }
+          }
+          try {
+            const stats = await fs.stat(finalTocPath);
+            const tocContent = await fs.readFile(finalTocPath, "utf-8");
+            const addon = parseTocFile(entry.name, tocContent, addonPath, status, stats);
+            try {
+              await fs.access(path.join(addonPath, ".git"));
+              addon.source = "git";
+              try {
+                const git = simpleGit.simpleGit(addonPath);
+                const branches = await git.branch();
+                addon.branch = branches.current;
+              } catch {
+              }
+            } catch {
+              addon.source = "zip";
+            }
             addons.push(addon);
           } catch (err) {
           }
         }
       }
       return { success: true, addons };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+  ipcMain.handle("toggle-addon", async (event, { path: addonPath, enable }) => {
+    try {
+      const dirName = path.basename(addonPath);
+      const tocPath = path.join(addonPath, `${dirName}.toc`);
+      const disabledTocPath = path.join(addonPath, `${dirName}.toc.disabled`);
+      if (enable) {
+        await fs.rename(disabledTocPath, tocPath);
+      } else {
+        await fs.rename(tocPath, disabledTocPath);
+      }
+      return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
     }

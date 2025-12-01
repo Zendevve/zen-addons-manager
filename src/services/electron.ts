@@ -50,6 +50,13 @@ export const electronService = {
   },
 
   /**
+   * Toggle addon status (enable/disable)
+   */
+  async toggleAddon(addonPath: string, enable: boolean): Promise<{ success: boolean; error?: string }> {
+    return invoke('toggle-addon', { path: addonPath, enable })
+  },
+
+  /**
    * Update addon (git pull)
    */
   async updateAddon(addonPath: string): Promise<{ success: boolean; error?: string }> {
