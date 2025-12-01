@@ -54,8 +54,9 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      preload: path.join(__dirname$1, "preload.cjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
       webSecurity: false
     },
     autoHideMenuBar: true,

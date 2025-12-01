@@ -5,9 +5,12 @@ export default defineConfig({
   build: {
     target: 'node18',
     lib: {
-      entry: 'electron/main.ts',
+      entry: {
+        main: 'electron/main.ts',
+        preload: 'electron/preload.ts',
+      },
       formats: ['cjs'],
-      fileName: () => 'main.cjs',
+      fileName: (format, entryName) => `${entryName}.cjs`,
     },
     outDir: 'dist-electron',
     rollupOptions: {
