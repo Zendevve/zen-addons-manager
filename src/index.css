@@ -4,62 +4,12 @@
 
 @layer base {
   :root {
-    /* Catppuccin Mocha - Light mode (fallback, won't be used much) */
-    --background: 220 23% 95%;
-    --foreground: 234 16% 35%;
-    --card: 220 23% 95%;
-    --card-foreground: 234 16% 35%;
-    --popover: 220 23% 95%;
-    --popover-foreground: 234 16% 35%;
-    --primary: 266 85% 58%;
-    --primary-foreground: 220 23% 95%;
-    --secondary: 227 12% 71%;
-    --secondary-foreground: 234 16% 35%;
-    --muted: 225 14% 77%;
-    --muted-foreground: 233 10% 47%;
-    --accent: 220 91% 54%;
-    --accent-foreground: 220 23% 95%;
-    --destructive: 347 87% 44%;
-    --destructive-foreground: 220 23% 95%;
-    --border: 223 16% 83%;
-    --input: 223 16% 83%;
-    --ring: 266 85% 58%;
-    --radius: 0.5rem;
-  }
+    /*
+      Catppuccin Mocha Palette (Forced Default)
+      https://catppuccin.com/palette
+    */
 
-  .dark {
-    /* Catppuccin Mocha - Dark mode (primary theme) */
-    --background: 240 21% 15%;
-    /* base #1e1e2e */
-    --foreground: 226 64% 88%;
-    /* text #cdd6f4 */
-    --card: 237 16% 23%;
-    /* surface0 #313244 */
-    --card-foreground: 226 64% 88%;
-    --popover: 237 16% 23%;
-    --popover-foreground: 226 64% 88%;
-    --primary: 267 84% 81%;
-    /* mauve #cba6f7 */
-    --primary-foreground: 240 21% 15%;
-    --secondary: 235 16% 30%;
-    /* surface1 #45475a */
-    --secondary-foreground: 226 64% 88%;
-    --muted: 235 19% 35%;
-    /* surface2 #585b70 */
-    --muted-foreground: 227 27% 72%;
-    /* subtext0 #a6adc8 */
-    --accent: 217 92% 76%;
-    /* blue #89b4fa */
-    --accent-foreground: 240 21% 15%;
-    --destructive: 343 81% 75%;
-    /* red #f38ba8 */
-    --destructive-foreground: 226 64% 88%;
-    --border: 233 12% 39%;
-    /* overlay0 #6c7086 */
-    --input: 233 12% 39%;
-    --ring: 267 84% 81%;
-
-    /* Additional Catppuccin colors for custom use */
+    /* Base Colors */
     --ctp-rosewater: 10 56% 91%;
     --ctp-flamingo: 0 59% 88%;
     --ctp-pink: 316 72% 86%;
@@ -83,9 +33,40 @@
     --ctp-surface2: 233 10% 40%;
     --ctp-surface1: 235 16% 30%;
     --ctp-surface0: 237 16% 23%;
-    --ctp-base: 240 21% 15%;
-    --ctp-mantle: 240 16% 12%;
-    --ctp-crust: 240 23% 9%;
+    --ctp-base: 240 21% 15%;   /* #1e1e2e */
+    --ctp-mantle: 240 16% 12%; /* #181825 */
+    --ctp-crust: 240 23% 9%;   /* #11111b */
+
+    /* Semantic Mappings */
+    --background: var(--ctp-base);
+    --foreground: var(--ctp-text);
+
+    --card: var(--ctp-surface0);
+    --card-foreground: var(--ctp-text);
+
+    --popover: var(--ctp-surface0);
+    --popover-foreground: var(--ctp-text);
+
+    --primary: var(--ctp-mauve);
+    --primary-foreground: var(--ctp-base);
+
+    --secondary: var(--ctp-mantle);
+    --secondary-foreground: var(--ctp-text);
+
+    --muted: var(--ctp-surface1);
+    --muted-foreground: var(--ctp-subtext0);
+
+    --accent: var(--ctp-surface1);
+    --accent-foreground: var(--ctp-text);
+
+    --destructive: var(--ctp-red);
+    --destructive-foreground: var(--ctp-base);
+
+    --border: var(--ctp-overlay0);
+    --input: var(--ctp-surface0);
+    --ring: var(--ctp-mauve);
+
+    --radius: 0.5rem;
   }
 }
 
