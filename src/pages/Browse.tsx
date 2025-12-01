@@ -17,6 +17,8 @@ interface SearchResult {
   stars: number
   author: string
   updated_at: string
+  compatibleVersions?: string[]
+  interface?: number
 }
 
 // Featured/Popular WoW Addons to show by default
@@ -332,6 +334,31 @@ export function Browse() {
                   {/* Mock Tags */}
                   <Badge variant="outline" className="text-xs font-normal text-muted-foreground">Addon</Badge>
                   <Badge variant="outline" className="text-xs font-normal text-muted-foreground">Lua</Badge>
+
+                  {/* Version Compatibility Badges */}
+                  {result.compatibleVersions && result.compatibleVersions.length > 0 && (
+                    <>
+                      {result.compatibleVersions.slice(0, 3).map(version => (
+                        <Badge
+                          key={version}
+                          variant="secondary"
+                          className="text-xs font-normal bg-green-900/30 text-green-400 hover:bg-green-900/40"
+                        >
+                          {version === '1.12' ? 'Vanilla' : version === '2.4.3' ? 'TBC' : version === '3.3.5' ? 'WotLK' : version === '4.3.4' ? 'Cata' : version === '5.4.8' ? 'MoP' : version}
+                        </Badge>
+                      ))}
+                      {result.compatibleVersions.length > 3 && (
+                        <Badge variant="secondary" className="text-xs font-normal">
+                          +{result.compatibleVersions.length - 3}
+                        </Badge>
+                      )}
+                    </>
+                  )}
+                  {result.compatibleVersions && result.compatibleVersions.length === 0 && (
+                    <Badge variant="outline" className="text-xs font-normal text-orange-400 border-orange-400/50">
+                      Unknown Version
+                    </Badge>
+                  )}
                 </div>
               </div>
 
