@@ -89,6 +89,81 @@ async function findTocFile(dirPath: string): Promise<{ tocPath: string; tocName:
   return null;
 }
 
+// Map WoW interface version to version labels
+function mapInterfaceToVersion(interfaceVersion: number): string[] {
+  const versions: string[] = [];
+
+  if (interfaceVersion >= 11200 && interfaceVersion < 20000) versions.push('1.12');
+  if (interfaceVersion >= 20400 && interfaceVersion < 30000) versions.push('2.4.3');
+  if (interfaceVersion >= 30300 && interfaceVersion < 40000) versions.push('3.3.5');
+  if (interfaceVersion >= 40300 && interfaceVersion < 50000) versions.push('4.3.4');
+  if (interfaceVersion >= 50400 && interfaceVersion < 100000) versions.push('5.4.8');
+  if (interfaceVersion >= 110000) {
+    versions.push('retail');
+    versions.push('classic');
+  }
+
+  return versions;
+}
+
+// Fetch TOC file from GitHub to detect compatible WoW versions
+async function fetchTocFromGithub(owner: string, repo: string): Promise<{
+  interface?: number;
+  versions?: string[];
+} | null> {
+  try {
+    const tocPatterns = [
+      `${repo}.toc`,
+      `${repo}_Vanilla.toc`,
+      `${repo}_TBC.toc`,
+      `${repo}_Wrath.toc`,
+      `${repo}_Mainline.toc`
+    ];
+
+    for (const tocFile of tocPatterns) {
+      try {
+        const response = await axios.get(
+          `https://api.github.com/repos/${owner}/${repo}/contents/${tocFile}`,
+          {
+            headers: {
+              'Accept': 'application/vnd.github.v3.raw',
+              'User-Agent': 'ZenAddonsManager'
+            }
+          }
+        );
+
+        if (response.data) {
+          const content = response.data;
+          const lines = content.split('\n');
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('## Interface:')) {
+              const interfaceStr = trimmed.replace('## Interface:', '').trim();
+              const interfaceNum = parseInt(interfaceStr, 10);
+
+              if (!isNaN(interfaceNum)) {
+                return {
+                  interface: interfaceNum,
+                  versions: mapInterfaceToVersion(interfaceNum)
+                };
+              }
+            }
+          }
+        }
+      } catch (err) {
+        continue;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.warn(`Failed to fetch TOC for ${owner}/${repo}`);
+    return null;
+  }
+}
+
+
 // ===== Electron Window Setup =====
 
 function createWindow() {
@@ -474,7 +549,19 @@ function setupIpcHandlers() {
         .sort((a, b) => b.stars - a.stars)
         .slice(0, 30);
 
-      return { success: true, results };
+      // Fetch TOC info for each result to determine WoW version compatibility
+      const resultsWithVersions = await Promise.all(
+        results.map(async (result) => {
+          const tocInfo = await fetchTocFromGithub(result.author, result.name);
+          return {
+            ...result,
+            interface: tocInfo?.interface,
+            compatibleVersions: tocInfo?.versions || []
+          };
+        })
+      );
+
+      return { success: true, results: resultsWithVersions };
     } catch (error: any) {
       console.error('GitHub Search Error:', error.response?.data || error.message);
       return { success: false, error: error.message };
