@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Search, Download, Loader2, Star, Github, Filter, ChevronDown, ArrowLeft, Box } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Search, Download, Loader2, Star, Github, Filter, ChevronDown, ArrowLeft, Box, ChevronLeft, ChevronRight } from 'lucide-react'
 import { electronService } from '@/services/electron'
 import { toast } from 'sonner'
 
@@ -87,12 +88,18 @@ export function Browse() {
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
 
+  // Sorting and Pagination State
+  const [sortBy, setSortBy] = useState('relevance')
+  const [itemsPerPage, setItemsPerPage] = useState(20)
+  const [currentPage, setCurrentPage] = useState(1)
+
   const handleSearch = async () => {
     if (!searchQuery.trim()) return
 
     setIsSearching(true)
     setHasSearched(true)
     setSearchResults([])
+    setCurrentPage(1) // Reset to first page on new search
 
     const result = await electronService.searchGithub(searchQuery)
 
@@ -154,6 +161,24 @@ export function Browse() {
     }
     setLoading(false)
   }
+
+  // Derived state for sorting and pagination
+  const sortedResults = useMemo(() => {
+    const results = [...searchResults]
+    if (sortBy === 'stars') {
+      return results.sort((a, b) => b.stars - a.stars)
+    } else if (sortBy === 'updated') {
+      return results.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    }
+    // 'relevance' is default API order, so no sort needed
+    return results
+  }, [searchResults, sortBy])
+
+  const totalPages = Math.ceil(sortedResults.length / itemsPerPage)
+  const paginatedResults = sortedResults.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
 
   return (
     <div className="flex h-full">
@@ -217,12 +242,35 @@ export function Browse() {
           {/* Sort/View Controls */}
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1 cursor-pointer hover:text-foreground">
-                Sort by: Relevance <ChevronDown className="size-3" />
-              </span>
-              <span className="flex items-center gap-1 cursor-pointer hover:text-foreground">
-                View: 20 <ChevronDown className="size-3" />
-              </span>
+              <div className="flex items-center gap-2">
+                <span>Sort by:</span>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-[140px] h-8">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="relevance">Relevance</SelectItem>
+                    <SelectItem value="stars">Stars</SelectItem>
+                    <SelectItem value="updated">Last Updated</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>View:</span>
+                <Select value={itemsPerPage.toString()} onValueChange={(v) => {
+                  setItemsPerPage(Number(v))
+                  setCurrentPage(1) // Reset to page 1 when changing view count
+                }}>
+                  <SelectTrigger className="w-[80px] h-8">
+                    <SelectValue placeholder="20" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
               {hasSearched ? `${searchResults.length} results` : 'Start searching to find addons'}
@@ -239,7 +287,7 @@ export function Browse() {
             </div>
           )}
 
-          {searchResults.map((result) => (
+          {paginatedResults.map((result) => (
             <div key={result.url} className="group flex gap-4 p-4 rounded-xl border border-border bg-card hover:border-primary/50 transition-all">
               {/* GitHub Profile Picture */}
               <div className="size-16 rounded-lg overflow-hidden shrink-0 bg-secondary">
@@ -300,6 +348,33 @@ export function Browse() {
               </div>
             </div>
           ))}
+
+          {/* Pagination Controls */}
+          {sortedResults.length > itemsPerPage && (
+            <div className="flex items-center justify-center gap-4 pt-4 pb-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="size-4 mr-2" />
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+                <ChevronRight className="size-4 ml-2" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -349,3 +424,4 @@ export function Browse() {
     </div>
   )
 }
+

@@ -4,67 +4,34 @@
 
 @layer base {
   :root {
-    /*
-      Catppuccin Mocha Palette (Forced Default)
-      https://catppuccin.com/palette
-    */
+    /* Shadcn Neutral - Dark Mode (Forced Default) */
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
 
-    /* Base Colors */
-    --ctp-rosewater: 10 56% 91%;
-    --ctp-flamingo: 0 59% 88%;
-    --ctp-pink: 316 72% 86%;
-    --ctp-mauve: 267 84% 81%;
-    --ctp-red: 343 81% 75%;
-    --ctp-maroon: 350 65% 77%;
-    --ctp-peach: 23 92% 75%;
-    --ctp-yellow: 41 88% 83%;
-    --ctp-green: 115 54% 76%;
-    --ctp-teal: 170 57% 73%;
-    --ctp-sky: 189 71% 73%;
-    --ctp-sapphire: 199 76% 69%;
-    --ctp-blue: 217 92% 76%;
-    --ctp-lavender: 232 97% 85%;
-    --ctp-text: 226 64% 88%;
-    --ctp-subtext1: 227 35% 80%;
-    --ctp-subtext0: 227 27% 72%;
-    --ctp-overlay2: 228 17% 64%;
-    --ctp-overlay1: 230 13% 55%;
-    --ctp-overlay0: 233 12% 39%;
-    --ctp-surface2: 233 10% 40%;
-    --ctp-surface1: 235 16% 30%;
-    --ctp-surface0: 237 16% 23%;
-    --ctp-base: 240 21% 15%;   /* #1e1e2e */
-    --ctp-mantle: 240 16% 12%; /* #181825 */
-    --ctp-crust: 240 23% 9%;   /* #11111b */
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
 
-    /* Semantic Mappings */
-    --background: var(--ctp-base);
-    --foreground: var(--ctp-text);
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
 
-    --card: var(--ctp-surface0);
-    --card-foreground: var(--ctp-text);
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
 
-    --popover: var(--ctp-surface0);
-    --popover-foreground: var(--ctp-text);
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
 
-    --primary: var(--ctp-mauve);
-    --primary-foreground: var(--ctp-base);
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
 
-    --secondary: var(--ctp-mantle);
-    --secondary-foreground: var(--ctp-text);
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
 
-    --muted: var(--ctp-surface1);
-    --muted-foreground: var(--ctp-subtext0);
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
 
-    --accent: var(--ctp-surface1);
-    --accent-foreground: var(--ctp-text);
-
-    --destructive: var(--ctp-red);
-    --destructive-foreground: var(--ctp-base);
-
-    --border: var(--ctp-overlay0);
-    --input: var(--ctp-surface0);
-    --ring: var(--ctp-mauve);
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
 
     --radius: 0.5rem;
   }
@@ -77,16 +44,5 @@
 
   body {
     @apply bg-background text-foreground;
-  }
-
-  /* Style Guide: Selection Background -> Overlay 2 (20% - 30% Opacity) */
-  ::selection {
-    background-color: hsl(var(--ctp-overlay2) / 0.3);
-    color: hsl(var(--ctp-text));
-  }
-
-  /* Style Guide: Cursor -> Rosewater */
-  input, textarea {
-    caret-color: hsl(var(--ctp-rosewater));
   }
 }

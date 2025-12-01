@@ -2,11 +2,8 @@
 
 # Zen Addons Manager
 
-<a href="https://github.com/catppuccin/catppuccin/blob/main/LICENSE"><img src="https://raw.githubusercontent.com/catppuccin/catppuccin/main/assets/palette/macchiato.png" width="400" alt="Catppuccin Palette"/></a>
-
 ### A modern, beautiful World of Warcraft addon manager
 
-[![Catppuccin](https://img.shields.io/badge/catppuccin-mocha-cba6f7?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4eiIgZmlsbD0iI2NiYTZmNyIvPgo8L3N2Zz4K)](https://github.com/catppuccin/catppuccin)
 [![License](https://img.shields.io/github/license/Zendevve/zen-addons-manager?style=for-the-badge&color=89b4fa)](LICENSE)
 
 [Features](#-features) • [Installation](#-installation) • [Development](#-development)
@@ -17,8 +14,8 @@
 
 ## ✨ Features
 
-### 🎨 **Beautiful Catppuccin Theme**
-Soothing pastel colors designed for extended gaming sessions. Built with the Catppuccin Mocha palette for a premium, modern aesthetic.
+### 🎨 **Modern Dark Theme**
+Clean, neutral dark theme designed for focus and clarity. Built with Shadcn UI for a professional look.
 
 ### 🌍 **Multi-Version WoW Support**
 Manage addons across **all** WoW versions:
@@ -51,7 +48,7 @@ Manage addons across **all** WoW versions:
 | Feature | Zen Addons Manager | Other Managers |
 |---------|-------------------|----------------|
 | **Multi-version support** | ✅ All WoW versions | ❌ Usually Retail only |
-| **Modern UI** | ✅ Catppuccin theme | ⚠️ Dated interfaces |
+| **Modern UI** | ✅ Clean Neutral theme | ⚠️ Dated interfaces |
 | **Drag-and-drop** | ✅ Instant install | ❌ Manual file selection |
 | **Bulk operations** | ✅ Full support | ⚠️ Limited |
 | **GitHub integration** | ✅ Featured addons | ❌ Manual searching |
@@ -114,7 +111,7 @@ npm run package
 
 ### Tech Stack
 - **Frontend**: React + TypeScript + Vite
-- **UI**: Tailwind CSS + Shadcn UI + Catppuccin
+- **UI**: Tailwind CSS + Shadcn UI
 - **Desktop**: Electron
 - **State**: LocalStorage + React hooks
 
@@ -154,7 +151,7 @@ Zen Addons Manager follows strict UX principles:
 - **Reduce cognitive load** - Auto-detect everything possible
 - **Show only what matters** - Progressive disclosure
 - **Instant feedback** - Toast notifications for all actions
-- **Beautiful by default** - Catppuccin aesthetic throughout
+- **Clean by default** - Minimalist aesthetic throughout
 
 ---
 
@@ -167,7 +164,5 @@ Zen Addons Manager follows strict UX principles:
 <div align="center">
 
 **[⬆ back to top](#zen-addons-manager)**
-
-Made with 💜 using [Catppuccin](https://github.com/catppuccin/catppuccin)
 
 </div>
