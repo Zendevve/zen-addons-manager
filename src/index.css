@@ -4,48 +4,88 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Catppuccin Mocha - Light mode (fallback, won't be used much) */
+    --background: 220 23% 95%;
+    --foreground: 234 16% 35%;
+    --card: 220 23% 95%;
+    --card-foreground: 234 16% 35%;
+    --popover: 220 23% 95%;
+    --popover-foreground: 234 16% 35%;
+    --primary: 266 85% 58%;
+    --primary-foreground: 220 23% 95%;
+    --secondary: 227 12% 71%;
+    --secondary-foreground: 234 16% 35%;
+    --muted: 225 14% 77%;
+    --muted-foreground: 233 10% 47%;
+    --accent: 220 91% 54%;
+    --accent-foreground: 220 23% 95%;
+    --destructive: 347 87% 44%;
+    --destructive-foreground: 220 23% 95%;
+    --border: 223 16% 83%;
+    --input: 223 16% 83%;
+    --ring: 266 85% 58%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    /* Catppuccin Mocha - Dark mode (primary theme) */
+    --background: 240 21% 15%;
+    /* base #1e1e2e */
+    --foreground: 226 64% 88%;
+    /* text #cdd6f4 */
+    --card: 237 16% 23%;
+    /* surface0 #313244 */
+    --card-foreground: 226 64% 88%;
+    --popover: 237 16% 23%;
+    --popover-foreground: 226 64% 88%;
+    --primary: 267 84% 81%;
+    /* mauve #cba6f7 */
+    --primary-foreground: 240 21% 15%;
+    --secondary: 235 16% 30%;
+    /* surface1 #45475a */
+    --secondary-foreground: 226 64% 88%;
+    --muted: 235 19% 35%;
+    /* surface2 #585b70 */
+    --muted-foreground: 227 27% 72%;
+    /* subtext0 #a6adc8 */
+    --accent: 217 92% 76%;
+    /* blue #89b4fa */
+    --accent-foreground: 240 21% 15%;
+    --destructive: 343 81% 75%;
+    /* red #f38ba8 */
+    --destructive-foreground: 226 64% 88%;
+    --border: 233 12% 39%;
+    /* overlay0 #6c7086 */
+    --input: 233 12% 39%;
+    --ring: 267 84% 81%;
+
+    /* Additional Catppuccin colors for custom use */
+    --ctp-rosewater: 10 56% 91%;
+    --ctp-flamingo: 0 59% 88%;
+    --ctp-pink: 316 72% 86%;
+    --ctp-mauve: 267 84% 81%;
+    --ctp-red: 343 81% 75%;
+    --ctp-maroon: 350 65% 77%;
+    --ctp-peach: 23 92% 75%;
+    --ctp-yellow: 41 88% 83%;
+    --ctp-green: 115 54% 76%;
+    --ctp-teal: 170 57% 73%;
+    --ctp-sky: 189 71% 73%;
+    --ctp-sapphire: 199 76% 69%;
+    --ctp-blue: 217 92% 76%;
+    --ctp-lavender: 232 97% 85%;
+    --ctp-text: 226 64% 88%;
+    --ctp-subtext1: 227 35% 80%;
+    --ctp-subtext0: 227 27% 72%;
+    --ctp-overlay2: 228 17% 64%;
+    --ctp-overlay1: 230 13% 55%;
+    --ctp-overlay0: 233 12% 39%;
+    --ctp-surface2: 233 10% 40%;
+    --ctp-surface1: 235 16% 30%;
+    --ctp-surface0: 237 16% 23%;
+    --ctp-base: 240 21% 15%;
+    --ctp-mantle: 240 16% 12%;
+    --ctp-crust: 240 23% 9%;
   }
 }
 
@@ -56,5 +96,16 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Style Guide: Selection Background -> Overlay 2 (20% - 30% Opacity) */
+  ::selection {
+    background-color: hsl(var(--ctp-overlay2) / 0.3);
+    color: hsl(var(--ctp-text));
+  }
+
+  /* Style Guide: Cursor -> Rosewater */
+  input, textarea {
+    caret-color: hsl(var(--ctp-rosewater));
   }
 }
