@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Search, RefreshCw, Trash2, DownloadCloud, MoreVertical, Settings, Box, Activity, Wallet, ChevronDown, Filter, Plus, FileUp, Link as LinkIcon, Globe } from 'lucide-react'
+import { Search, RefreshCw, Trash2, DownloadCloud, MoreVertical, Settings, Box, Activity, Wallet, ChevronDown, ChevronRight, Filter, Plus, FileUp, Link as LinkIcon, Globe, ExternalLink, Copy, Share2, Ban, Play, CheckCircle2 } from 'lucide-react'
 import { electronService } from '@/services/electron'
 import { storageService } from '@/services/storage'
 import type { Addon } from '@/types/addon'
@@ -19,8 +19,10 @@ export function Manage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [addonFolder, setAddonFolder] = useState<string | null>(null)
+  const [executablePath, setExecutablePath] = useState<string | null>(null)
   const [operatingAddonId, setOperatingAddonId] = useState<string | null>(null)
   const [selectedAddons, setSelectedAddons] = useState<string[]>([])
+  const [expandedAddons, setExpandedAddons] = useState<string[]>([])
   const [isDragging, setIsDragging] = useState(false)
 
   // URL Install Dialog
@@ -29,12 +31,25 @@ export function Manage() {
 
   // Load active installation on mount
   useEffect(() => {
-    const activeInstallation = storageService.getActiveInstallation()
-    if (activeInstallation) {
-      setAddonFolder(activeInstallation.addonsPath)
-    } else {
-      detectWowFolder()
+    const init = async () => {
+      const activeInstallation = storageService.getActiveInstallation()
+      if (activeInstallation) {
+        setAddonFolder(activeInstallation.addonsPath)
+
+        if (activeInstallation.executablePath) {
+          setExecutablePath(activeInstallation.executablePath)
+        } else {
+          // Try to discover executable from addons path (assuming .../Interface/AddOns)
+          // We need to go up 2 levels
+          // Since we can't use path module here easily without polyfill, we'll rely on string manipulation or just wait for user to re-select
+          // Actually, we can try to validate the parent folders via IPC
+          // But for now, let's just leave it. If the user re-selects folder, we'll get it.
+        }
+      } else {
+        detectWowFolder()
+      }
     }
+    init()
   }, [])
 
   // Load addons when folder is set
@@ -48,6 +63,9 @@ export function Manage() {
     const result = await electronService.autoDetectWowFolder()
     if (result.success && result.path) {
       setAddonFolder(result.path)
+      if (result.executablePath) {
+        setExecutablePath(result.executablePath)
+      }
     }
   }
 
@@ -91,6 +109,7 @@ export function Manage() {
     if (result.success) {
       toast.success(`${addon.name} deleted`, { id: toastId })
       setAddons(prev => prev.filter(a => a.id !== addon.id))
+      setSelectedAddons(prev => prev.filter(id => id !== addon.id))
     } else {
       toast.error(`Failed to delete ${addon.name}`, { id: toastId })
     }
@@ -139,6 +158,81 @@ export function Manage() {
 
     await loadAddons()
     setLoading(false)
+  }
+
+  const handleLaunchGame = async () => {
+    if (!executablePath) {
+      toast.error('Game executable not found. Please re-configure your installation.')
+      return
+    }
+
+    const toastId = toast.loading('Launching WoW...')
+    const result = await electronService.launchGame(executablePath)
+
+    if (result.success) {
+      toast.success('Game launched!', { id: toastId })
+    } else {
+      toast.error(`Failed to launch game: ${result.error}`, { id: toastId })
+    }
+  }
+
+  // --- Bulk Actions ---
+
+  const handleBulkDisable = async () => {
+    if (!confirm(`Disable ${selectedAddons.length} addons?`)) return
+
+    const toastId = toast.loading(`Disabling ${selectedAddons.length} addons...`)
+    let successCount = 0
+
+    for (const id of selectedAddons) {
+      const addon = addons.find(a => a.id === id)
+      if (addon) {
+        const result = await electronService.toggleAddon(addon.path, false)
+        if (result.success) successCount++
+      }
+    }
+
+    toast.success(`Disabled ${successCount} addons`, { id: toastId })
+    await loadAddons()
+    setSelectedAddons([])
+  }
+
+  const handleBulkEnable = async () => {
+    if (!confirm(`Enable ${selectedAddons.length} addons?`)) return
+
+    const toastId = toast.loading(`Enabling ${selectedAddons.length} addons...`)
+    let successCount = 0
+
+    for (const id of selectedAddons) {
+      const addon = addons.find(a => a.id === id)
+      if (addon) {
+        const result = await electronService.toggleAddon(addon.path, true)
+        if (result.success) successCount++
+      }
+    }
+
+    toast.success(`Enabled ${successCount} addons`, { id: toastId })
+    await loadAddons()
+    setSelectedAddons([])
+  }
+
+  const handleBulkRemove = async () => {
+    if (!confirm(`Delete ${selectedAddons.length} addons? This cannot be undone.`)) return
+
+    const toastId = toast.loading(`Deleting ${selectedAddons.length} addons...`)
+    let successCount = 0
+
+    for (const id of selectedAddons) {
+      const addon = addons.find(a => a.id === id)
+      if (addon) {
+        const result = await electronService.deleteAddon(addon.path)
+        if (result.success) successCount++
+      }
+    }
+
+    toast.success(`Deleted ${successCount} addons`, { id: toastId })
+    await loadAddons()
+    setSelectedAddons([])
   }
 
   // --- Install Handlers ---
@@ -257,6 +351,21 @@ export function Manage() {
     }
   }
 
+  const toggleExpand = (id: string) => {
+    setExpandedAddons(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    )
+  }
+
+  const openInExplorer = async (path: string) => {
+    await electronService.openInExplorer(path)
+  }
+
+  const copyLink = (url: string) => {
+    navigator.clipboard.writeText(url)
+    toast.success('Link copied to clipboard')
+  }
+
   return (
     <div className="flex h-full">
       {/* Main Content */}
@@ -284,7 +393,13 @@ export function Manage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="default" className="bg-green-600 hover:bg-green-700 text-white gap-2" onClick={updateAllGitAddons}>
+              {executablePath && (
+                <Button variant="default" className="bg-green-600 hover:bg-green-700 text-white gap-2" onClick={handleLaunchGame}>
+                  <Play className="size-4 fill-current" />
+                  Play
+                </Button>
+              )}
+              <Button variant="secondary" className="gap-2" onClick={updateAllGitAddons}>
                 <DownloadCloud className="size-4" />
                 Update All
               </Button>
@@ -311,51 +426,85 @@ export function Manage() {
           </div>
         </div>
 
-        {/* Toolbar */}
+        {/* Toolbar / Bulk Actions */}
         <div className="p-6 space-y-4">
-          <div className="flex gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
-              <Input
-                className="pl-9 bg-secondary/50 border-0"
-                placeholder={`Search ${addons.length} addons...`}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+          {selectedAddons.length > 0 ? (
+            <div className="flex items-center justify-between bg-secondary/30 p-2 rounded-lg border border-border animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 px-2">
+                  <Checkbox
+                    checked={selectedAddons.length === filteredAddons.length && filteredAddons.length > 0}
+                    onCheckedChange={toggleAll}
+                  />
+                  <span className="text-sm font-medium">{selectedAddons.length} selected</span>
+                </div>
+                <div className="h-6 w-px bg-border" />
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Share2 className="size-4" />
+                    Share
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-2" onClick={handleBulkEnable}>
+                    <CheckCircle2 className="size-4" />
+                    Enable
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-2" onClick={handleBulkDisable}>
+                    <Ban className="size-4" />
+                    Disable
+                  </Button>
+                  <Button variant="destructive" size="sm" className="gap-2" onClick={handleBulkRemove}>
+                    <Trash2 className="size-4" />
+                    Remove
+                  </Button>
+                </div>
+              </div>
             </div>
+          ) : (
+            <div className="flex gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
+                <Input
+                  className="pl-9 bg-secondary/50 border-0"
+                  placeholder={`Search ${addons.length} addons...`}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
 
-            {/* Install Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="size-4" />
-                  Install content
-                  <ChevronDown className="size-4 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => navigate('/browse', { state: { activeProfile: addonFolder } })}>
-                  <Globe className="mr-2 size-4" />
-                  <span>Browse</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleInstallFromFile()}>
-                  <FileUp className="mr-2 size-4" />
-                  <span>Add from file</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setIsUrlDialogOpen(true)}>
-                  <LinkIcon className="mr-2 size-4" />
-                  <span>Add from URL</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+              {/* Install Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="gap-2">
+                    <Plus className="size-4" />
+                    Install content
+                    <ChevronDown className="size-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => navigate('/browse', { state: { activeProfile: addonFolder } })}>
+                    <Globe className="mr-2 size-4" />
+                    <span>Browse</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleInstallFromFile()}>
+                    <FileUp className="mr-2 size-4" />
+                    <span>Add from file</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsUrlDialogOpen(true)}>
+                    <LinkIcon className="mr-2 size-4" />
+                    <span>Add from URL</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
 
-          <div className="flex items-center gap-2">
-            <Filter className="size-4 text-muted-foreground mr-2" />
-            <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer">Mods</Badge>
-            <Badge variant="outline" className="text-muted-foreground hover:text-foreground cursor-pointer">Updates available</Badge>
-            <Badge variant="outline" className="text-muted-foreground hover:text-foreground cursor-pointer">Disabled</Badge>
-          </div>
+          {selectedAddons.length === 0 && (
+            <div className="flex items-center gap-2">
+              <Filter className="size-4 text-muted-foreground mr-2" />
+              <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer">Mods</Badge>
+              <Badge variant="outline" className="text-muted-foreground hover:text-foreground cursor-pointer">Resource Packs</Badge>
+            </div>
+          )}
         </div>
 
         {/* Addon List with Drag-and-Drop */}
@@ -397,61 +546,103 @@ export function Manage() {
             {/* Table Body */}
             <div className="divide-y divide-border">
               {filteredAddons.map((addon) => (
-                <div key={addon.id} className="grid grid-cols-[40px_1fr_150px_200px] gap-4 p-4 items-center hover:bg-muted/30 transition-colors group">
-                  <div className="flex items-center justify-center">
-                    <Checkbox
-                      checked={selectedAddons.includes(addon.id)}
-                      onCheckedChange={() => toggleSelection(addon.id)}
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="size-10 rounded bg-secondary flex items-center justify-center text-muted-foreground font-bold shrink-0">
-                      {addon.name[0]}
+                <div key={addon.id} className="group transition-colors hover:bg-muted/30">
+                  <div className="grid grid-cols-[40px_1fr_150px_200px] gap-4 p-4 items-center">
+                    <div className="flex items-center justify-center">
+                      <Checkbox
+                        checked={selectedAddons.includes(addon.id)}
+                        onCheckedChange={() => toggleSelection(addon.id)}
+                      />
                     </div>
-                    <div className="min-w-0">
-                      <div className="font-semibold truncate">{addon.title || addon.name}</div>
-                      <div className="text-xs text-muted-foreground truncate">by {addon.author || 'Unknown'}</div>
+
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div
+                        className="cursor-pointer hover:bg-muted rounded p-1 -ml-2"
+                        onClick={() => toggleExpand(addon.id)}
+                      >
+                        {expandedAddons.includes(addon.id) ? (
+                          <ChevronDown className="size-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="size-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="size-10 rounded bg-secondary flex items-center justify-center text-muted-foreground font-bold shrink-0">
+                        {addon.name[0]}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-semibold truncate">{addon.title || addon.name}</div>
+                        <div className="text-xs text-muted-foreground truncate">by {addon.author || 'Unknown'}</div>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="text-sm text-muted-foreground">
-                    <div className="truncate">{addon.version}</div>
-                    <div className="text-xs opacity-50 truncate">{addon.source === 'git' ? addon.branch : 'Local'}</div>
-                  </div>
+                    <div className="text-sm text-muted-foreground">
+                      <div className="truncate">{addon.version}</div>
+                      <div className="text-xs opacity-50 truncate">{addon.source === 'git' ? addon.branch : 'Local'}</div>
+                    </div>
 
-                  <div className="flex items-center justify-end gap-3">
-                    {addon.source === 'git' && (
+                    <div className="flex items-center justify-end gap-3">
+                      {addon.source === 'git' && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-primary"
+                          onClick={() => updateAddon(addon)}
+                          disabled={operatingAddonId === addon.id}
+                        >
+                          <DownloadCloud className="size-4" />
+                        </Button>
+                      )}
+
+                      <Switch
+                        checked={addon.status === 'enabled'}
+                        onCheckedChange={(checked) => toggleStatus(addon, checked)}
+                        disabled={operatingAddonId !== null}
+                      />
+
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="text-muted-foreground hover:text-primary"
-                        onClick={() => updateAddon(addon)}
-                        disabled={operatingAddonId === addon.id}
+                        className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => deleteAddon(addon)}
                       >
-                        <DownloadCloud className="size-4" />
+                        <Trash2 className="size-4" />
                       </Button>
-                    )}
 
-                    <Switch
-                      checked={addon.status === 'enabled'}
-                      onCheckedChange={(checked) => toggleStatus(addon, checked)}
-                      disabled={operatingAddonId !== null}
-                    />
-
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => deleteAddon(addon)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-
-                    <Button size="icon" variant="ghost" className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                      <MoreVertical className="size-4" />
-                    </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost" className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MoreVertical className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openInExplorer(addon.path)}>
+                            <ExternalLink className="mr-2 size-4" />
+                            <span>Show file</span>
+                          </DropdownMenuItem>
+                          {addon.url && (
+                            <DropdownMenuItem onClick={() => copyLink(addon.url)}>
+                              <Copy className="mr-2 size-4" />
+                              <span>Copy link</span>
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
+
+                  {/* Expanded Details */}
+                  {expandedAddons.includes(addon.id) && (
+                    <div className="px-14 pb-4 text-sm text-muted-foreground bg-muted/10 border-t border-border/50">
+                      <div className="grid grid-cols-2 gap-4 pt-4">
+                        <div>
+                          <span className="font-medium text-foreground">Path:</span> {addon.path}
+                        </div>
+                        <div>
+                          <span className="font-medium text-foreground">Source:</span> {addon.url || 'Local'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
 

@@ -1,11 +1,12 @@
 import { useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Download, Loader2, CheckCircle, XCircle, Search, Star, Github } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { Search, Download, Loader2, Star, Github, Filter, ChevronDown, ArrowLeft, Box } from 'lucide-react'
 import { electronService } from '@/services/electron'
-import { storageService } from '@/services/storage'
+import { toast } from 'sonner'
 
 interface SearchResult {
   name: string
@@ -18,50 +19,15 @@ interface SearchResult {
 }
 
 export function Browse() {
-  const [url, setUrl] = useState('')
-  const [method, setMethod] = useState<'git' | 'zip'>('git')
-  const [loading, setLoading] = useState(false)
-  const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const activeProfile = location.state?.activeProfile
 
-  // Search State
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
-
-  const handleInstall = async (installUrl: string = url) => {
-    setStatus(null)
-    if (!installUrl) {
-      setStatus({ type: 'error', message: 'Please enter a URL' })
-      return
-    }
-
-    const activeInstallation = storageService.getActiveInstallation()
-    if (!activeInstallation) {
-      setStatus({ type: 'error', message: 'No active WoW installation found. Please configure one in Settings.' })
-      return
-    }
-
-    setLoading(true)
-    try {
-      const result = await electronService.installAddon({
-        url: installUrl,
-        addonsFolder: activeInstallation.addonsPath,
-        method: 'git' // Default to git for search results
-      })
-
-      if (result.success) {
-        setStatus({ type: 'success', message: `Successfully installed ${result.addonName || 'addon'}` })
-        if (installUrl === url) setUrl('')
-      } else {
-        setStatus({ type: 'error', message: result.error || 'Installation failed' })
-      }
-    } catch (err) {
-      setStatus({ type: 'error', message: 'An unexpected error occurred' })
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return
@@ -70,16 +36,18 @@ export function Browse() {
     setHasSearched(true)
     setSearchResults([])
 
-    try {
-      const result = await electronService.searchGithub(searchQuery)
-      if (result.success && result.results) {
-        setSearchResults(result.results)
+    const result = await electronService.searchGithub(searchQuery)
+
+    if (result.success && result.results) {
+      setSearchResults(result.results)
+      if (result.results.length === 0) {
+        toast.info('No addons found')
       }
-    } catch (error) {
-      console.error('Search failed:', error)
-    } finally {
-      setIsSearching(false)
+    } else {
+      toast.error(`Search failed: ${result.error}`)
     }
+
+    setIsSearching(false)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -88,172 +56,227 @@ export function Browse() {
     }
   }
 
+  const handleInstall = async (url: string) => {
+    const activeInstallation = localStorage.getItem('activeInstallation')
+    let addonsPath = ''
+
+    if (activeInstallation) {
+      try {
+        const parsed = JSON.parse(activeInstallation)
+        addonsPath = parsed.addonsPath
+      } catch (e) {
+        console.error('Failed to parse active installation', e)
+      }
+    }
+
+    if (!addonsPath) {
+      const result = await electronService.autoDetectWowFolder()
+      if (result.success && result.path) {
+        addonsPath = result.path
+      } else {
+        toast.error('No WoW installation found. Please go to Manage tab and select folder.')
+        return
+      }
+    }
+
+    setLoading(true)
+    const toastId = toast.loading('Installing addon...')
+    const method = 'git'
+
+    const result = await electronService.installAddon({
+      url,
+      addonsFolder: addonsPath,
+      method
+    })
+
+    if (result.success) {
+      toast.success(`Successfully installed ${result.addonName}`, { id: toastId })
+    } else {
+      toast.error(`Failed to install: ${result.error}`, { id: toastId })
+    }
+    setLoading(false)
+  }
+
   return (
-    <div className="p-8 max-w-[1200px] mx-auto space-y-8">
-      <header>
-        <h1 className="text-3xl font-bold tracking-tight">Browse & Install</h1>
-        <p className="text-muted-foreground mt-2">Discover and install addons from GitHub</p>
-      </header>
+    <div className="flex h-full">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header / Search Area */}
+        <div className="p-6 border-b border-border space-y-4">
 
-      {/* Manual Install Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Install from URL</CardTitle>
-          <CardDescription>
-            Enter the URL of the addon repository or ZIP file.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Input
-                placeholder="https://github.com/username/repo"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-              />
+          {/* Context Header or Default Header */}
+          {activeProfile ? (
+            <div className="mb-6">
+              <Button
+                variant="ghost"
+                className="mb-4 -ml-2 text-muted-foreground hover:text-foreground"
+                onClick={() => navigate(-1)}
+              >
+                <ArrowLeft className="mr-2 size-4" />
+                Back to instance
+              </Button>
+              <div className="flex items-center gap-4">
+                <div className="size-12 rounded-xl bg-secondary flex items-center justify-center border border-border">
+                  <Box className="size-6 text-muted-foreground" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold">Install content to instance</h1>
+                  <p className="text-sm text-muted-foreground">WoW Retail • {activeProfile.split('\\').pop()}</p>
+                </div>
+              </div>
             </div>
-            <Select value={method} onValueChange={(v: 'git' | 'zip') => setMethod(v)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Method" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="git">Git Repository</SelectItem>
-                <SelectItem value="zip">ZIP Archive</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button onClick={() => handleInstall(url)} disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Installing...
-                </>
-              ) : (
-                <>
-                  <Download className="mr-2 size-4" />
-                  Install
-                </>
-              )}
-            </Button>
-          </div>
-
-          {status && (
-            <div className={`flex items-center gap-2 text-sm p-4 rounded-md ${status.type === 'success' ? 'bg-green-500/15 text-green-600' : 'bg-red-500/15 text-red-600'
-              }`}>
-              {status.type === 'success' ? (
-                <CheckCircle className="size-4" />
-              ) : (
-                <XCircle className="size-4" />
-              )}
-              <span>{status.message}</span>
+          ) : (
+            <div className="flex items-center gap-2 mb-4">
+              <h1 className="text-2xl font-bold">Discover content</h1>
             </div>
           )}
-        </CardContent>
-      </Card>
 
-      {/* Search Section */}
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
+          {/* Filter Badges */}
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer">Addons</Badge>
+            <Badge variant="ghost" className="text-muted-foreground hover:text-foreground cursor-pointer">WeakAuras</Badge>
+            <Badge variant="ghost" className="text-muted-foreground hover:text-foreground cursor-pointer">Plater Profiles</Badge>
+            <Badge variant="ghost" className="text-muted-foreground hover:text-foreground cursor-pointer">ElvUI</Badge>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
             <Input
-              className="pl-9"
-              placeholder="Search GitHub for addons (e.g. 'plates', 'unit frames')..."
+              className="pl-9 h-12 text-lg bg-secondary/50 border-0 focus-visible:ring-1"
+              placeholder="Search addons..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
             />
+            <div className="absolute right-2 top-2">
+              <Button size="sm" onClick={handleSearch} disabled={isSearching || !searchQuery.trim()}>
+                {isSearching ? <Loader2 className="size-4 animate-spin" /> : 'Search'}
+              </Button>
+            </div>
           </div>
-          <Button onClick={handleSearch} disabled={isSearching || !searchQuery.trim()}>
-            {isSearching ? <Loader2 className="size-4 animate-spin" /> : 'Search'}
-          </Button>
+
+          {/* Sort/View Controls */}
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1 cursor-pointer hover:text-foreground">
+                Sort by: Relevance <ChevronDown className="size-3" />
+              </span>
+              <span className="flex items-center gap-1 cursor-pointer hover:text-foreground">
+                View: 20 <ChevronDown className="size-3" />
+              </span>
+            </div>
+            <div>
+              {hasSearched ? `${searchResults.length} results` : 'Start searching to find addons'}
+            </div>
+          </div>
         </div>
 
-        {/* Featured Addons (Only show if no search results yet) */}
-        {!hasSearched && (
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight mb-4">Featured Addons</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                {
-                  name: 'ZenUI',
-                  description: 'A minimalist, high-performance UI replacement for World of Warcraft.',
-                  url: 'https://github.com/Zendevve/ZenUI'
-                },
-                {
-                  name: 'ZenToast',
-                  description: 'Immersive, toast-style notifications for achievements, loot, and more.',
-                  url: 'https://github.com/Zendevve/ZenToast'
-                },
-                {
-                  name: 'ZenBags',
-                  description: 'A clean, all-in-one bag inventory management addon.',
-                  url: 'https://github.com/Zendevve/ZenBags'
-                }
-              ].map((addon) => (
-                <Card key={addon.name} className="flex flex-col">
-                  <CardHeader>
-                    <CardTitle>{addon.name}</CardTitle>
-                    <CardDescription>{addon.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="mt-auto pt-0">
-                    <Button
-                      className="w-full"
-                      variant="secondary"
-                      onClick={() => handleInstall(addon.url)}
-                      disabled={loading}
-                    >
-                      <Download className="mr-2 size-4" />
-                      Install
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+        {/* Results List */}
+        <div className="flex-1 overflow-auto p-6 space-y-4">
+          {!hasSearched && (
+            <div className="text-center py-20 text-muted-foreground">
+              <div className="size-16 rounded-full bg-secondary/50 flex items-center justify-center mx-auto mb-4">
+                <Search className="size-8 opacity-50" />
+              </div>
+              <h3 className="text-lg font-medium mb-1">Search for Addons</h3>
+              <p>Type in the search bar above to find addons from GitHub.</p>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Search Results */}
-        {hasSearched && (
-          <div>
-            <h2 className="text-xl font-semibold mb-4">
-              {searchResults.length > 0
-                ? `Found ${searchResults.length} results`
-                : 'No results found'}
-            </h2>
-            <div className="grid grid-cols-1 gap-4">
-              {searchResults.map((result) => (
-                <Card key={result.url}>
-                  <CardContent className="p-6 flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-lg">{result.name}</h3>
-                        <div className="flex items-center text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                          <Star className="size-3 mr-1 fill-current" />
-                          {result.stars}
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{result.description || 'No description provided.'}</p>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2">
-                        <span className="flex items-center gap-1">
-                          <Github className="size-3" />
-                          {result.author}
-                        </span>
-                        <span>Updated: {new Date(result.updated_at).toLocaleDateString()}</span>
-                      </div>
+          {searchResults.map((result) => (
+            <div key={result.url} className="group flex gap-4 p-4 rounded-xl border border-border bg-card hover:border-primary/50 transition-all">
+              {/* Icon Placeholder */}
+              <div className="size-16 rounded-lg bg-secondary flex items-center justify-center shrink-0 text-2xl font-bold text-muted-foreground">
+                {result.name[0]}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-bold text-lg leading-none mb-1 group-hover:text-primary transition-colors">{result.name}</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-1">{result.description || 'No description provided.'}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground mb-1">
+                      <Star className="size-3 fill-current" />
+                      {result.stars}
                     </div>
-                    <Button
-                      onClick={() => handleInstall(result.url)}
-                      disabled={loading}
-                    >
-                      <Download className="mr-2 size-4" />
-                      Install
-                    </Button>
-                  </CardContent>
-                </Card>
+                    <div className="text-xs text-muted-foreground">
+                      Updated {new Date(result.updated_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 mt-3">
+                  <Badge variant="secondary" className="text-xs font-normal">
+                    <Github className="size-3 mr-1" />
+                    {result.author}
+                  </Badge>
+                  {/* Mock Tags */}
+                  <Badge variant="outline" className="text-xs font-normal text-muted-foreground">Addon</Badge>
+                  <Badge variant="outline" className="text-xs font-normal text-muted-foreground">Lua</Badge>
+                </div>
+              </div>
+
+              <div className="flex flex-col justify-center pl-4 border-l border-border">
+                <Button
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => handleInstall(result.url)}
+                  disabled={loading}
+                >
+                  <Download className="size-4" />
+                  Install
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Right Sidebar - Filters */}
+      <div className="w-64 border-l border-border bg-card/30 p-6 hidden xl:block overflow-auto">
+        <div className="space-y-6">
+          <div>
+            <h3 className="font-semibold mb-3 flex items-center justify-between">
+              Categories
+              <ChevronDown className="size-4 text-muted-foreground" />
+            </h3>
+            <div className="space-y-1">
+              {[
+                'Achievements', 'Action Bars', 'Artwork', 'Auction & Economy', 'Audio & Video',
+                'Bags & Inventory', 'Boss Encounters', 'Buffs & Debuffs', 'Chat & Communication',
+                'Class', 'Combat', 'Companions', 'Data Export', 'Development Tools', 'Garrison',
+                'Guild', 'Libraries', 'Mail', 'Map & Minimap', 'Minigames', 'Miscellaneous',
+                'Plugins', 'Professions', 'PvP', 'Quests & Leveling', 'Roleplay', 'Tooltip',
+                'Twitch Integration', 'Unit Frames'
+              ].map(cat => (
+                <div key={cat} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary/50 cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <div className="size-4 rounded border border-muted-foreground/30" />
+                  {cat}
+                </div>
               ))}
             </div>
           </div>
-        )}
+
+          <Separator />
+
+          <div>
+            <h3 className="font-semibold mb-3 flex items-center justify-between">
+              Environment
+              <ChevronDown className="size-4 text-muted-foreground" />
+            </h3>
+            <div className="space-y-1">
+              {['Client', 'Server'].map(env => (
+                <div key={env} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary/50 cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <div className="size-4 rounded border border-muted-foreground/30" />
+                  {env}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

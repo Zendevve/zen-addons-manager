@@ -1,5 +1,6 @@
 "use strict";
 const electron = require("electron");
+const child_process = require("child_process");
 const path = require("path");
 const fs = require("fs/promises");
 const simpleGit = require("simple-git");
@@ -8,7 +9,7 @@ const axios = require("axios");
 const os = require("os");
 const url = require("url");
 var _documentCurrentScript = typeof document !== "undefined" ? document.currentScript : null;
-const { app, BrowserWindow, ipcMain, dialog } = electron;
+const { app, BrowserWindow, ipcMain, dialog, shell } = electron;
 const __filename$1 = url.fileURLToPath(typeof document === "undefined" ? require("url").pathToFileURL(__filename).href : _documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === "SCRIPT" && _documentCurrentScript.src || new URL("main.cjs", document.baseURI).href);
 const __dirname$1 = path.dirname(__filename$1);
 function parseTocFile(addonName, tocContent, addonPath, status, stats) {
@@ -93,6 +94,13 @@ function setupIpcHandlers() {
       filters: filters || []
     });
     return result.filePaths[0];
+  });
+  ipcMain.handle("open-in-explorer", async (event, filePath) => {
+    if (filePath) {
+      shell.showItemInFolder(filePath);
+      return true;
+    }
+    return false;
   });
   ipcMain.handle("install-addon-from-file", async (event, { filePath, addonsFolder }) => {
     const tempDir = path.join(os.tmpdir(), `zen-addon-local-${Date.now()}`);
@@ -446,11 +454,51 @@ function setupIpcHandlers() {
       try {
         const addonsPath = path.join(basePath, "Interface", "AddOns");
         await fs.access(addonsPath);
-        return { success: true, path: addonsPath };
+        const rootPath = basePath;
+        const executables = ["Wow.exe", "WowClassic.exe", "WowT.exe", "WowB.exe"];
+        let executablePath;
+        for (const exe of executables) {
+          try {
+            await fs.access(path.join(rootPath, exe));
+            executablePath = path.join(rootPath, exe);
+            break;
+          } catch {
+          }
+        }
+        return { success: true, path: addonsPath, executablePath };
       } catch {
       }
     }
     return { success: false, error: "WoW installation not found" };
+  });
+  ipcMain.handle("launch-game", async (event, executablePath) => {
+    try {
+      const subprocess = child_process.spawn(executablePath, [], {
+        detached: true,
+        stdio: "ignore"
+      });
+      subprocess.unref();
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+  ipcMain.handle("validate-wow-path", async (event, folderPath) => {
+    const executables = ["Wow.exe", "WowClassic.exe", "WowT.exe", "WowB.exe"];
+    let foundExecutable = null;
+    for (const exe of executables) {
+      try {
+        await fs.access(path.join(folderPath, exe));
+        foundExecutable = exe;
+        break;
+      } catch {
+      }
+    }
+    if (foundExecutable) {
+      const addonsPath = path.join(folderPath, "Interface", "AddOns");
+      return { success: true, executablePath: path.join(folderPath, foundExecutable), addonsPath, version: foundExecutable };
+    }
+    return { success: false, error: "No WoW executable found in this folder" };
   });
 }
 app.on("ready", () => {

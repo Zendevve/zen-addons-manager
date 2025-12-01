@@ -1,5 +1,6 @@
 import electron from 'electron';
-const { app, BrowserWindow, ipcMain, dialog } = electron;
+const { app, BrowserWindow, ipcMain, dialog, shell } = electron;
+import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
 import { simpleGit } from 'simple-git';
@@ -138,6 +139,15 @@ function setupIpcHandlers() {
       filters: filters || []
     });
     return result.filePaths[0];
+  });
+
+  // Open in Explorer
+  ipcMain.handle('open-in-explorer', async (event, filePath) => {
+    if (filePath) {
+      shell.showItemInFolder(filePath);
+      return true;
+    }
+    return false;
   });
 
   // Install addon from local file
@@ -579,13 +589,62 @@ function setupIpcHandlers() {
       try {
         const addonsPath = path.join(basePath, 'Interface', 'AddOns');
         await fs.access(addonsPath);
-        return { success: true, path: addonsPath };
+
+        // Try to find executable in the root folder (parent of Interface)
+        const rootPath = basePath;
+        const executables = ['Wow.exe', 'WowClassic.exe', 'WowT.exe', 'WowB.exe'];
+        let executablePath: string | undefined;
+
+        for (const exe of executables) {
+          try {
+            await fs.access(path.join(rootPath, exe));
+            executablePath = path.join(rootPath, exe);
+            break;
+          } catch { }
+        }
+
+        return { success: true, path: addonsPath, executablePath };
       } catch {
         // Path doesn't exist, continue
       }
     }
 
     return { success: false, error: 'WoW installation not found' };
+  });
+
+  // Launch Game
+  ipcMain.handle('launch-game', async (event, executablePath) => {
+    try {
+      const subprocess = spawn(executablePath, [], {
+        detached: true,
+        stdio: 'ignore'
+      });
+      subprocess.unref();
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Validate WoW Path
+  ipcMain.handle('validate-wow-path', async (event, folderPath) => {
+    const executables = ['Wow.exe', 'WowClassic.exe', 'WowT.exe', 'WowB.exe'];
+    let foundExecutable = null;
+
+    for (const exe of executables) {
+      try {
+        await fs.access(path.join(folderPath, exe));
+        foundExecutable = exe;
+        break;
+      } catch { }
+    }
+
+    if (foundExecutable) {
+      const addonsPath = path.join(folderPath, 'Interface', 'AddOns');
+      return { success: true, executablePath: path.join(folderPath, foundExecutable), addonsPath, version: foundExecutable };
+    }
+
+    return { success: false, error: 'No WoW executable found in this folder' };
   });
 }
 

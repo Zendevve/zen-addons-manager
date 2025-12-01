@@ -97,7 +97,7 @@ export const electronService = {
   /**
    * Auto-detect WoW installation folder
    */
-  async autoDetectWowFolder(): Promise<{ success: boolean; path?: string; error?: string }> {
+  async autoDetectWowFolder(): Promise<{ success: boolean; path?: string; executablePath?: string; error?: string }> {
     return invoke('auto-detect-wow-folder')
   },
 
@@ -133,5 +133,26 @@ export const electronService = {
    */
   async installAddonFromFile(filePath: string, addonsFolder: string): Promise<{ success: boolean; addonName?: string; error?: string }> {
     return invoke('install-addon-from-file', { filePath, addonsFolder })
+  },
+
+  /**
+   * Open a file or folder in the system's default file explorer.
+   */
+  async openInExplorer(filePath: string): Promise<{ success: boolean; error?: string }> {
+    return invoke('open-in-explorer', filePath)
+  },
+
+  /**
+   * Launch the game executable
+   */
+  async launchGame(executablePath: string): Promise<{ success: boolean; error?: string }> {
+    return invoke('launch-game', executablePath)
+  },
+
+  /**
+   * Validate if a folder is a WoW installation folder
+   */
+  async validateWowPath(folderPath: string): Promise<{ success: boolean; executablePath?: string; addonsPath?: string; version?: string; error?: string }> {
+    return invoke('validate-wow-path', folderPath)
   }
 }

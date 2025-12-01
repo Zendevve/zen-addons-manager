@@ -3,6 +3,7 @@ export interface WowInstallation {
   name: string
   version: string
   addonsPath: string
+  executablePath?: string
   isActive: boolean
 }
 

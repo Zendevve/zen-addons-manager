@@ -19,7 +19,10 @@ contextBridge.exposeInMainWorld('electron', {
       'search-github',
       'update-all-addons',
       'open-file-dialog',
-      'install-addon-from-file'
+      'install-addon-from-file',
+      'open-in-explorer',
+      'launch-game',
+      'validate-wow-path'
     ]
 
     if (validChannels.includes(channel)) {
