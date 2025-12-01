@@ -419,28 +419,60 @@ function setupIpcHandlers() {
   // Search GitHub
   ipcMain.handle('search-github', async (event, query) => {
     try {
-      const response = await axios.get('https://api.github.com/search/repositories', {
-        params: {
-          q: `${query} topic:wow-addon language:lua`,
-          sort: 'stars',
-          order: 'desc',
-          per_page: 20
-        },
-        headers: {
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'ZenAddonsManager'
-        }
-      });
+      // Search multiple topics in parallel for better coverage
+      const searchTopics = [
+        `${query} topic:wow-addon language:lua`,
+        `${query} topic:world-of-warcraft language:lua`,
+        `${query} topic:warcraft language:lua`,
+        `${query} language:lua wow`
+      ];
 
-      const results = response.data.items.map((item: any) => ({
-        name: item.name,
-        full_name: item.full_name,
-        description: item.description,
-        url: item.clone_url,
-        stars: item.stargazers_count,
-        author: item.owner.login,
-        updated_at: item.updated_at
-      }));
+      // Execute all searches in parallel
+      const searchPromises = searchTopics.map(searchQuery =>
+        axios.get('https://api.github.com/search/repositories', {
+          params: {
+            q: searchQuery,
+            sort: 'stars',
+            order: 'desc',
+            per_page: 15
+          },
+          headers: {
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'ZenAddonsManager'
+          }
+        }).catch(err => {
+          console.warn(`Search failed for: ${searchQuery}`, err.message);
+          return { data: { items: [] } };
+        })
+      );
+
+      const responses = await Promise.all(searchPromises);
+
+      // Combine and deduplicate results by full_name
+      const seenRepos = new Set<string>();
+      const allResults: any[] = [];
+
+      for (const response of responses) {
+        for (const item of response.data.items) {
+          if (!seenRepos.has(item.full_name)) {
+            seenRepos.add(item.full_name);
+            allResults.push({
+              name: item.name,
+              full_name: item.full_name,
+              description: item.description,
+              url: item.clone_url,
+              stars: item.stargazers_count,
+              author: item.owner.login,
+              updated_at: item.updated_at
+            });
+          }
+        }
+      }
+
+      // Sort by stars and limit to top 30
+      const results = allResults
+        .sort((a, b) => b.stars - a.stars)
+        .slice(0, 30);
 
       return { success: true, results };
     } catch (error: any) {
