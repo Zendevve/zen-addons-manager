@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, Download, Loader2, Star, Github, Filter, ChevronDown, ArrowLeft, Box, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Download, Loader2, Star, Github, ChevronDown, ArrowLeft, Box, ChevronLeft, ChevronRight } from 'lucide-react'
 import { electronService } from '@/services/electron'
 import { toast } from 'sonner'
 
@@ -219,9 +219,9 @@ export function Browse() {
           {/* Filter Badges */}
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer">Addons</Badge>
-            <Badge variant="ghost" className="text-muted-foreground hover:text-foreground cursor-pointer">WeakAuras</Badge>
-            <Badge variant="ghost" className="text-muted-foreground hover:text-foreground cursor-pointer">Plater Profiles</Badge>
-            <Badge variant="ghost" className="text-muted-foreground hover:text-foreground cursor-pointer">ElvUI</Badge>
+            <Badge variant="outline" className="text-muted-foreground hover:text-foreground cursor-pointer">WeakAuras</Badge>
+            <Badge variant="outline" className="text-muted-foreground hover:text-foreground cursor-pointer">Plater Profiles</Badge>
+            <Badge variant="outline" className="text-muted-foreground hover:text-foreground cursor-pointer">ElvUI</Badge>
           </div>
 
           {/* Search Bar */}
