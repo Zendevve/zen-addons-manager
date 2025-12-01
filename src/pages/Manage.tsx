@@ -44,6 +44,29 @@ function getExpansionIcon(version: string = '') {
   }
 }
 
+
+
+const AddonIcon = ({ addon }: { addon: Addon }) => {
+  const [error, setError] = useState(false)
+
+  if (addon.author && addon.author !== 'Unknown' && !error) {
+    return (
+      <img
+        src={`https://github.com/${addon.author}.png?size=64`}
+        alt={addon.author}
+        className="w-full h-full object-cover"
+        onError={() => setError(true)}
+      />
+    )
+  }
+
+  return (
+    <span className="text-lg font-bold text-muted-foreground">
+      {addon.name[0].toUpperCase()}
+    </span>
+  )
+}
+
 export function Manage() {
   const navigate = useNavigate()
   const [addons, setAddons] = useState<Addon[]>([])
@@ -410,8 +433,8 @@ export function Manage() {
         <div className="p-6 pb-0">
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-4">
-              <div className="size-16 rounded-xl bg-secondary flex items-center justify-center border border-border">
-                <Box className="size-8 text-muted-foreground" />
+              <div className={`size-16 rounded-xl flex items-center justify-center border border-border text-xl font-bold text-white shadow-sm ${getExpansionIcon(activeInstallation?.version).color}`}>
+                {getExpansionIcon(activeInstallation?.version).text}
               </div>
               <div>
                 <h1 className="text-2xl font-bold">{activeInstallation?.name || 'My Addons'}</h1>
@@ -600,20 +623,8 @@ export function Manage() {
                           <ChevronRight className="size-4 text-muted-foreground" />
                         )}
                       </div>
-                      <div className="size-10 rounded overflow-hidden shrink-0 relative">
-                        {addon.author && addon.author !== 'Unknown' && (
-                          <img
-                            src={`https://github.com/${addon.author}.png?size=64`}
-                            alt={addon.author}
-                            className="w-full h-full object-cover absolute inset-0 z-10"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none'
-                            }}
-                          />
-                        )}
-                        <div className={`w-full h-full flex items-center justify-center text-[10px] font-bold text-white ${getExpansionIcon(activeInstallation?.version).color}`}>
-                          {getExpansionIcon(activeInstallation?.version).text}
-                        </div>
+                      <div className="size-10 rounded-lg bg-secondary/50 border border-border flex items-center justify-center shrink-0 overflow-hidden">
+                        <AddonIcon addon={addon} />
                       </div>
                       <div className="min-w-0">
                         <div className="font-semibold truncate">{addon.title || addon.name}</div>
