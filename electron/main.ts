@@ -163,6 +163,37 @@ async function fetchTocFromGithub(owner: string, repo: string): Promise<{
   }
 }
 
+// Parse GitHub URL to extract repo URL and branch
+function parseGithubUrl(url: string): { repoUrl: string; branch?: string } {
+  try {
+    // Handle standard GitHub URLs with tree/branch
+    // Format: https://github.com/user/repo/tree/branch/path...
+    const treeMatch = url.match(/github\.com\/([^/]+)\/([^/]+)\/tree\/([^/]+)/);
+    if (treeMatch) {
+      const [_, user, repo, branch] = treeMatch;
+      return {
+        repoUrl: `https://github.com/${user}/${repo}.git`,
+        branch
+      };
+    }
+
+    // Handle standard URLs without tree
+    // Format: https://github.com/user/repo
+    const repoMatch = url.match(/github\.com\/([^/]+)\/([^/]+?)(\.git)?$/);
+    if (repoMatch) {
+      const [_, user, repo] = repoMatch;
+      return {
+        repoUrl: `https://github.com/${user}/${repo}.git`
+      };
+    }
+
+    // Return original if not matched (might be other git host or raw git url)
+    return { repoUrl: url };
+  } catch {
+    return { repoUrl: url };
+  }
+}
+
 
 // ===== Electron Window Setup =====
 
@@ -492,15 +523,42 @@ function setupIpcHandlers() {
   });
 
   // Search GitHub
-  ipcMain.handle('search-github', async (event, query) => {
+  ipcMain.handle('search-github', async (event, query, category = 'all') => {
     try {
-      // Search multiple topics in parallel for better coverage
-      const searchTopics = [
-        `${query} topic:wow-addon language:lua`,
-        `${query} topic:world-of-warcraft language:lua`,
-        `${query} topic:warcraft language:lua`,
-        `${query} language:lua wow`
-      ];
+      let searchTopics: string[] = [];
+
+      switch (category) {
+        case 'weakauras':
+          searchTopics = [
+            `${query} topic:weakauras`,
+            `${query} topic:weak-auras`,
+            `${query} "WeakAuras"`,
+          ];
+          break;
+        case 'plater':
+          searchTopics = [
+            `${query} topic:plater`,
+            `${query} topic:plater-profile`,
+            `${query} "Plater Nameplates"`,
+          ];
+          break;
+        case 'elvui':
+          searchTopics = [
+            `${query} topic:elvui`,
+            `${query} topic:elvui-plugin`,
+            `${query} "ElvUI"`,
+          ];
+          break;
+        case 'addon':
+        default:
+          searchTopics = [
+            `${query} topic:wow-addon language:lua`,
+            `${query} topic:world-of-warcraft language:lua`,
+            `${query} topic:warcraft language:lua`,
+            `${query} language:lua wow`
+          ];
+          break;
+      }
 
       // Execute all searches in parallel
       const searchPromises = searchTopics.map(searchQuery =>
@@ -586,8 +644,11 @@ function setupIpcHandlers() {
       await fs.mkdir(tempDir, { recursive: true });
 
       if (method === 'git') {
+        const { repoUrl, branch } = parseGithubUrl(addonUrl);
         const git = simpleGit();
-        await git.clone(addonUrl, tempDir);
+
+        const cloneOptions = branch ? ['--branch', branch] : [];
+        await git.clone(repoUrl, tempDir, cloneOptions);
 
         const fixResult = await findTocFile(tempDir);
         if (!fixResult) {

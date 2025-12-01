@@ -5,9 +5,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 const navItems = [
   { path: '/dashboard', label: 'Home', icon: LayoutDashboard },
+  { path: '/library', label: 'Library', icon: FolderCog },
   { path: '/browse', label: 'Discover', icon: Globe },
-  { path: '/manage', label: 'My Addons', icon: FolderCog },
-  { path: '/settings', label: 'Settings', icon: Settings },
+  { path: '/manage', label: 'My Addons', icon: Leaf }, // Using Leaf as a placeholder for "My Addons" to distinguish from Library/Settings
 ]
 
 export function Layout() {
@@ -53,7 +53,24 @@ export function Layout() {
           </nav>
 
           <div className="mt-auto">
-            {/* Bottom actions if needed */}
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Link
+                  to="/settings"
+                  className={cn(
+                    'size-10 flex items-center justify-center rounded-lg transition-all',
+                    location.pathname === '/settings'
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <Settings className="size-5" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p>Settings</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </aside>
 

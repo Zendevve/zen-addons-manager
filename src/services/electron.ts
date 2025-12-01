@@ -104,8 +104,8 @@ export const electronService = {
   /**
    * Search GitHub for addons
    */
-  async searchGithub(query: string): Promise<{ success: boolean; results?: any[]; error?: string }> {
-    return invoke('search-github', query)
+  async searchGithub(query: string, category: string = 'all'): Promise<{ success: boolean; results?: any[]; error?: string }> {
+    return invoke('search-github', query, category)
   },
 
   /**

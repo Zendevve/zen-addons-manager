@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Download, Loader2, Star, Github, ChevronDown, ArrowLeft, Box, ChevronLeft, ChevronRight } from 'lucide-react'
 import { electronService } from '@/services/electron'
 import { toast } from 'sonner'
+import { AvatarImage } from '@/components/AvatarImage'
 
 interface SearchResult {
   name: string
@@ -95,6 +96,8 @@ export function Browse() {
   const [itemsPerPage, setItemsPerPage] = useState(20)
   const [currentPage, setCurrentPage] = useState(1)
 
+  const [selectedCategory, setSelectedCategory] = useState('addon')
+
   const handleSearch = async () => {
     if (!searchQuery.trim()) return
 
@@ -103,7 +106,7 @@ export function Browse() {
     setSearchResults([])
     setCurrentPage(1) // Reset to first page on new search
 
-    const result = await electronService.searchGithub(searchQuery)
+    const result = await electronService.searchGithub(searchQuery, selectedCategory)
 
     if (result.success && result.results) {
       setSearchResults(result.results)
@@ -218,10 +221,34 @@ export function Browse() {
 
           {/* Filter Badges */}
           <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer">Addons</Badge>
-            <Badge variant="outline" className="text-muted-foreground hover:text-foreground cursor-pointer">WeakAuras</Badge>
-            <Badge variant="outline" className="text-muted-foreground hover:text-foreground cursor-pointer">Plater Profiles</Badge>
-            <Badge variant="outline" className="text-muted-foreground hover:text-foreground cursor-pointer">ElvUI</Badge>
+            <Badge
+              variant={selectedCategory === 'addon' ? 'secondary' : 'outline'}
+              className={`cursor-pointer ${selectedCategory === 'addon' ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setSelectedCategory('addon')}
+            >
+              Addons
+            </Badge>
+            <Badge
+              variant={selectedCategory === 'weakauras' ? 'secondary' : 'outline'}
+              className={`cursor-pointer ${selectedCategory === 'weakauras' ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setSelectedCategory('weakauras')}
+            >
+              WeakAuras
+            </Badge>
+            <Badge
+              variant={selectedCategory === 'plater' ? 'secondary' : 'outline'}
+              className={`cursor-pointer ${selectedCategory === 'plater' ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setSelectedCategory('plater')}
+            >
+              Plater Profiles
+            </Badge>
+            <Badge
+              variant={selectedCategory === 'elvui' ? 'secondary' : 'outline'}
+              className={`cursor-pointer ${selectedCategory === 'elvui' ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setSelectedCategory('elvui')}
+            >
+              ElvUI
+            </Badge>
           </div>
 
           {/* Search Bar */}
@@ -293,19 +320,10 @@ export function Browse() {
             <div key={result.url} className="group flex gap-4 p-4 rounded-xl border border-border bg-card hover:border-primary/50 transition-all">
               {/* GitHub Profile Picture */}
               <div className="size-16 rounded-lg overflow-hidden shrink-0 bg-secondary">
-                <img
+                <AvatarImage
                   src={`https://github.com/${result.author}.png?size=64`}
                   alt={`${result.author} avatar`}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    // Fallback to initial if image fails to load
-                    const target = e.currentTarget
-                    target.style.display = 'none'
-                    const fallback = document.createElement('div')
-                    fallback.className = 'w-full h-full flex items-center justify-center text-2xl font-bold text-muted-foreground'
-                    fallback.textContent = result.name[0]
-                    target.parentElement?.appendChild(fallback)
-                  }}
+                  fallbackText={result.name[0]}
                 />
               </div>
 

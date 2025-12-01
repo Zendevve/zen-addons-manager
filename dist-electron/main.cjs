@@ -117,6 +117,28 @@ async function fetchTocFromGithub(owner, repo) {
     return null;
   }
 }
+function parseGithubUrl(url2) {
+  try {
+    const treeMatch = url2.match(/github\.com\/([^/]+)\/([^/]+)\/tree\/([^/]+)/);
+    if (treeMatch) {
+      const [_, user, repo, branch] = treeMatch;
+      return {
+        repoUrl: `https://github.com/${user}/${repo}.git`,
+        branch
+      };
+    }
+    const repoMatch = url2.match(/github\.com\/([^/]+)\/([^/]+?)(\.git)?$/);
+    if (repoMatch) {
+      const [_, user, repo] = repoMatch;
+      return {
+        repoUrl: `https://github.com/${user}/${repo}.git`
+      };
+    }
+    return { repoUrl: url2 };
+  } catch {
+    return { repoUrl: url2 };
+  }
+}
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
@@ -447,8 +469,10 @@ function setupIpcHandlers() {
     try {
       await fs.mkdir(tempDir, { recursive: true });
       if (method === "git") {
+        const { repoUrl, branch } = parseGithubUrl(addonUrl);
         const git = simpleGit.simpleGit();
-        await git.clone(addonUrl, tempDir);
+        const cloneOptions = branch ? ["--branch", branch] : [];
+        await git.clone(repoUrl, tempDir, cloneOptions);
         const fixResult = await findTocFile(tempDir);
         if (!fixResult) {
           throw new Error("No .toc file found after cloning");
