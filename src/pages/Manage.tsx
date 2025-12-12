@@ -479,9 +479,10 @@ export function Manage() {
           return new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
         case 'author':
           return a.author.localeCompare(b.author)
-        case 'status':
+        case 'status': {
           const statusOrder = { outdated: 0, enabled: 1, disabled: 2 }
           return statusOrder[a.status as keyof typeof statusOrder] - statusOrder[b.status as keyof typeof statusOrder]
+        }
         default:
           return 0
       }

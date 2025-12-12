@@ -41,10 +41,6 @@ function parseTocFile(addonName, tocContent, addonPath, status, stats) {
       addon.description = trimmed.replace("## Notes:", "").trim();
     }
   }
-  try {
-    const gitPath = path.join(addonPath, ".git");
-  } catch {
-  }
   return addon;
 }
 async function findTocFile(dirPath) {
@@ -111,12 +107,12 @@ async function fetchTocFromGithub(owner, repo) {
             }
           }
         }
-      } catch (err) {
+      } catch {
         continue;
       }
     }
     return null;
-  } catch (error) {
+  } catch {
     console.warn(`Failed to fetch TOC for ${owner}/${repo}`);
     return null;
   }
@@ -125,7 +121,7 @@ function parseGithubUrl(url2) {
   try {
     const treeMatch = url2.match(/github\.com\/([^/]+)\/([^/]+)\/tree\/([^/]+)/);
     if (treeMatch) {
-      const [_, user, repo, branch] = treeMatch;
+      const [, user, repo, branch] = treeMatch;
       return {
         repoUrl: `https://github.com/${user}/${repo}.git`,
         branch
@@ -133,7 +129,7 @@ function parseGithubUrl(url2) {
     }
     const repoMatch = url2.match(/github\.com\/([^/]+)\/([^/]+?)(\.git)?$/);
     if (repoMatch) {
-      const [_, user, repo] = repoMatch;
+      const [, user, repo] = repoMatch;
       return {
         repoUrl: `https://github.com/${user}/${repo}.git`
       };
@@ -299,7 +295,7 @@ function setupIpcHandlers() {
               addon.source = "zip";
             }
             addons.push(addon);
-          } catch (err) {
+          } catch {
           }
         }
       }
@@ -663,8 +659,25 @@ function setupIpcHandlers() {
     }
     return { success: false, error: "WoW installation not found" };
   });
-  ipcMain.handle("launch-game", async (event, executablePath) => {
+  ipcMain.handle("launch-game", async (event, executablePath, cleanWdb) => {
     try {
+      if (cleanWdb) {
+        const gameDir = path.dirname(executablePath);
+        const wdbPaths = [
+          path.join(gameDir, "WDB"),
+          path.join(gameDir, "Cache", "WDB"),
+          path.join(gameDir, "Cache")
+          // Retail/Classic often just use Cache
+        ];
+        for (const wdbPath of wdbPaths) {
+          try {
+            await fs.rm(wdbPath, { recursive: true, force: true });
+            console.log(`Cleaned WDB/Cache: ${wdbPath}`);
+          } catch (err) {
+            console.error(`Failed to clean WDB: ${wdbPath}`, err);
+          }
+        }
+      }
       const subprocess = child_process.spawn(executablePath, [], {
         detached: true,
         stdio: "ignore"

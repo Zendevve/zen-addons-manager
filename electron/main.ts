@@ -64,13 +64,7 @@ function parseTocFile(addonName: string, tocContent: string, addonPath: string, 
     }
   }
 
-  // Check for git
-  try {
-    const gitPath = path.join(addonPath, '.git');
-    // We can't easily check sync here, but we'll assume if .git exists it's git
-    // For now, we'll leave source undefined and let the scanner fill it if needed
-    // or we can check it in the scanner loop
-  } catch { }
+  // Note: git source detection is handled in the scanner loop
 
   return addon;
 }
@@ -157,13 +151,13 @@ async function fetchTocFromGithub(owner: string, repo: string): Promise<{
             }
           }
         }
-      } catch (err) {
+      } catch {
         continue;
       }
     }
 
     return null;
-  } catch (error) {
+  } catch {
     console.warn(`Failed to fetch TOC for ${owner}/${repo}`);
     return null;
   }
@@ -176,7 +170,7 @@ function parseGithubUrl(url: string): { repoUrl: string; branch?: string } {
     // Format: https://github.com/user/repo/tree/branch/path...
     const treeMatch = url.match(/github\.com\/([^/]+)\/([^/]+)\/tree\/([^/]+)/);
     if (treeMatch) {
-      const [_, user, repo, branch] = treeMatch;
+      const [, user, repo, branch] = treeMatch;
       return {
         repoUrl: `https://github.com/${user}/${repo}.git`,
         branch
@@ -187,7 +181,7 @@ function parseGithubUrl(url: string): { repoUrl: string; branch?: string } {
     // Format: https://github.com/user/repo
     const repoMatch = url.match(/github\.com\/([^/]+)\/([^/]+?)(\.git)?$/);
     if (repoMatch) {
-      const [_, user, repo] = repoMatch;
+      const [, user, repo] = repoMatch;
       return {
         repoUrl: `https://github.com/${user}/${repo}.git`
       };
@@ -330,7 +324,7 @@ function setupIpcHandlers() {
     } catch (error: any) {
       try {
         await fs.rm(tempDir, { recursive: true, force: true });
-      } catch { }
+      } catch { /* cleanup failed, ignore */ }
       return { success: false, error: error.message };
     }
   });
@@ -397,15 +391,15 @@ function setupIpcHandlers() {
                       }
                     }
                   }
-                } catch { }
-              } catch { }
+                } catch { /* ignore */ }
+              } catch { /* ignore */ }
             } catch {
               addon.source = 'zip';
             }
 
             addons.push(addon);
-          } catch (err) {
-            // Error reading
+          } catch {
+            // Error reading toc file, skip addon
           }
         }
       }
@@ -515,7 +509,7 @@ function setupIpcHandlers() {
           try {
             await fs.access(path.join(addonPath, '.git'));
             gitAddons.push(addonPath);
-          } catch { }
+          } catch { /* not a git repo */ }
         }
       }
 
@@ -814,7 +808,7 @@ function setupIpcHandlers() {
     } catch (error: any) {
       try {
         await fs.rm(tempDir, { recursive: true, force: true });
-      } catch { }
+      } catch { /* cleanup failed, ignore */ }
 
       return { success: false, error: error.message };
     }
@@ -846,7 +840,7 @@ function setupIpcHandlers() {
             await fs.access(path.join(rootPath, exe));
             executablePath = path.join(rootPath, exe);
             break;
-          } catch { }
+          } catch { /* exe not found */ }
         }
 
         return { success: true, path: addonsPath, executablePath };
@@ -901,7 +895,7 @@ function setupIpcHandlers() {
         await fs.access(path.join(folderPath, exe));
         foundExecutable = exe;
         break;
-      } catch { }
+      } catch { /* exe not found */ }
     }
 
     if (foundExecutable) {

@@ -6,7 +6,7 @@ interface AvatarImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   containerClassName?: string
 }
 
-export function AvatarImage({ src, alt, fallbackText, className, containerClassName, ...props }: AvatarImageProps) {
+export function AvatarImage({ src, alt, fallbackText, className, containerClassName: _containerClassName, ...props }: AvatarImageProps) {
   const [hasError, setHasError] = useState(false)
 
   if (hasError) {

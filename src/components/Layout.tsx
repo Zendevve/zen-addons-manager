@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, FolderCog, Globe, Settings, Leaf, Box, Plus } from 'lucide-react'
+import { LayoutDashboard, FolderCog, Globe, Settings, Leaf, Plus } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { storageService } from '@/services/storage'
 import type { WowInstallation } from '@/types/installation'
