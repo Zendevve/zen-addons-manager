@@ -27,6 +27,7 @@ interface Addon {
   lastUpdated: string;
   source?: 'git' | 'zip';
   branch?: string;
+  sourceUrl?: string;
 }
 
 // ===== Helper Functions =====
@@ -51,8 +52,13 @@ function parseTocFile(addonName: string, tocContent: string, addonPath: string, 
       addon.title = trimmed.replace('## Title:', '').trim();
     } else if (trimmed.startsWith('## Version:')) {
       addon.version = trimmed.replace('## Version:', '').trim();
-    } else if (trimmed.startsWith('## Author:')) {
-      addon.author = trimmed.replace('## Author:', '').trim();
+    } else if (trimmed.startsWith('## Author:') || trimmed.startsWith('## Authors:')) {
+      addon.author = trimmed.replace(/^## Authors?:/, '').trim();
+    } else if (trimmed.startsWith('## X-Author:') || trimmed.startsWith('## X-Authors:')) {
+      // X- prefix is sometimes used for custom fields
+      if (addon.author === 'Unknown') {
+        addon.author = trimmed.replace(/^## X-Authors?:/, '').trim();
+      }
     } else if (trimmed.startsWith('## Notes:')) {
       addon.description = trimmed.replace('## Notes:', '').trim();
     }
@@ -368,11 +374,30 @@ function setupIpcHandlers() {
               await fs.access(path.join(addonPath, '.git'));
               addon.source = 'git';
 
-              // Get current branch
+              // Get current branch and remote URL
               try {
                 const git = simpleGit(addonPath);
                 const branches = await git.branch();
                 addon.branch = branches.current;
+
+                // Get remote URL and extract author if current author is Unknown
+                try {
+                  const remotes = await git.getRemotes(true);
+                  if (remotes.length > 0) {
+                    const remoteUrl = remotes[0].refs.fetch || remotes[0].refs.push;
+                    if (remoteUrl) {
+                      addon.sourceUrl = remoteUrl;
+
+                      // Extract GitHub username if author is Unknown
+                      if (addon.author === 'Unknown') {
+                        const githubMatch = remoteUrl.match(/github\.com[:/]([^/]+)\//);
+                        if (githubMatch) {
+                          addon.author = githubMatch[1];
+                        }
+                      }
+                    }
+                  }
+                } catch { }
               } catch { }
             } catch {
               addon.source = 'zip';
@@ -498,13 +523,47 @@ function setupIpcHandlers() {
         return { success: true, updated: 0, failed: 0, errors: [] };
       }
 
-      const results = await Promise.all(gitAddons.map(async (addonPath) => {
+      // Send initial progress
+      event.sender.send('addon-update-status', {
+        type: 'batch-start',
+        total: gitAddons.length
+      });
+
+      const results = await Promise.all(gitAddons.map(async (addonPath, index) => {
+        const addonId = path.basename(addonPath); // Use folder name as ID for now
         try {
+          // Notify start of individual update
+          event.sender.send('addon-update-status', {
+            type: 'update-start',
+            addonId
+          });
+
           const git = simpleGit(addonPath);
           await git.pull();
+
+          // Notify success
+          event.sender.send('addon-update-status', {
+            type: 'update-success',
+            addonId
+          });
+
           return { success: true };
         } catch (error: any) {
+          // Notify failure
+          event.sender.send('addon-update-status', {
+            type: 'update-error',
+            addonId,
+            error: error.message
+          });
+
           return { success: false, error: `${path.basename(addonPath)}: ${error.message}` };
+        } finally {
+          // Notify progress
+          event.sender.send('addon-update-status', {
+            type: 'batch-progress',
+            processed: index + 1,
+            total: gitAddons.length
+          });
         }
       }));
 
@@ -514,6 +573,13 @@ function setupIpcHandlers() {
           failCount++;
           if (res.error) errors.push(res.error);
         }
+      });
+
+      // Send completion
+      event.sender.send('addon-update-status', {
+        type: 'batch-complete',
+        updated: successCount,
+        failed: failCount
       });
 
       return { success: true, updated: successCount, failed: failCount, errors };
@@ -793,8 +859,27 @@ function setupIpcHandlers() {
   });
 
   // Launch Game
-  ipcMain.handle('launch-game', async (event, executablePath) => {
+  // Launch Game
+  ipcMain.handle('launch-game', async (event, executablePath, cleanWdb) => {
     try {
+      if (cleanWdb) {
+        const gameDir = path.dirname(executablePath);
+        const wdbPaths = [
+          path.join(gameDir, 'WDB'),
+          path.join(gameDir, 'Cache', 'WDB'),
+          path.join(gameDir, 'Cache') // Retail/Classic often just use Cache
+        ];
+
+        for (const wdbPath of wdbPaths) {
+          try {
+            await fs.rm(wdbPath, { recursive: true, force: true });
+            console.log(`Cleaned WDB/Cache: ${wdbPath}`);
+          } catch (err) {
+            console.error(`Failed to clean WDB: ${wdbPath}`, err);
+          }
+        }
+      }
+
       const subprocess = spawn(executablePath, [], {
         detached: true,
         stdio: 'ignore'

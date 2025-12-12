@@ -39,8 +39,27 @@ export function RightSidebar({ className, installation }: RightSidebarProps) {
           <h3 className="font-semibold">Playing as</h3>
         </div>
         <div className="p-4 rounded-lg bg-card border border-border flex items-center gap-3">
-          <div className="size-10 rounded bg-primary/20 flex items-center justify-center">
-            <Activity className="size-5 text-primary" />
+          <div className="size-10 rounded-xl overflow-hidden shadow-sm">
+            {(() => {
+              const logoPath = (() => {
+                switch (activeInstallation?.version) {
+                  case '1.12': return '/logos/vanilla.png'
+                  case '2.4.3': return '/logos/tbc.png'
+                  case '3.3.5': return '/logos/wrath.png'
+                  case '4.3.4': return '/logos/cataclysm.png'
+                  case '5.4.8': return '/logos/pandaria.png'
+                  default: return null
+                }
+              })()
+
+              return logoPath ? (
+                <img src={logoPath} alt={activeInstallation?.name || 'Instance'} className="size-full object-cover" />
+              ) : (
+                <div className="size-full rounded bg-primary/20 flex items-center justify-center">
+                  <Activity className="size-5 text-primary" />
+                </div>
+              )
+            })()}
           </div>
           <div>
             <div className="font-medium">{activeInstallation?.name || 'No Profile'}</div>

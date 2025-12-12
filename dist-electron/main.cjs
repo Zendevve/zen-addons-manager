@@ -31,8 +31,12 @@ function parseTocFile(addonName, tocContent, addonPath, status, stats) {
       addon.title = trimmed.replace("## Title:", "").trim();
     } else if (trimmed.startsWith("## Version:")) {
       addon.version = trimmed.replace("## Version:", "").trim();
-    } else if (trimmed.startsWith("## Author:")) {
-      addon.author = trimmed.replace("## Author:", "").trim();
+    } else if (trimmed.startsWith("## Author:") || trimmed.startsWith("## Authors:")) {
+      addon.author = trimmed.replace(/^## Authors?:/, "").trim();
+    } else if (trimmed.startsWith("## X-Author:") || trimmed.startsWith("## X-Authors:")) {
+      if (addon.author === "Unknown") {
+        addon.author = trimmed.replace(/^## X-Authors?:/, "").trim();
+      }
     } else if (trimmed.startsWith("## Notes:")) {
       addon.description = trimmed.replace("## Notes:", "").trim();
     }
@@ -273,6 +277,22 @@ function setupIpcHandlers() {
                 const git = simpleGit.simpleGit(addonPath);
                 const branches = await git.branch();
                 addon.branch = branches.current;
+                try {
+                  const remotes = await git.getRemotes(true);
+                  if (remotes.length > 0) {
+                    const remoteUrl = remotes[0].refs.fetch || remotes[0].refs.push;
+                    if (remoteUrl) {
+                      addon.sourceUrl = remoteUrl;
+                      if (addon.author === "Unknown") {
+                        const githubMatch = remoteUrl.match(/github\.com[:/]([^/]+)\//);
+                        if (githubMatch) {
+                          addon.author = githubMatch[1];
+                        }
+                      }
+                    }
+                  }
+                } catch {
+                }
               } catch {
               }
             } catch {
@@ -374,13 +394,37 @@ function setupIpcHandlers() {
       if (gitAddons.length === 0) {
         return { success: true, updated: 0, failed: 0, errors: [] };
       }
-      const results = await Promise.all(gitAddons.map(async (addonPath) => {
+      event.sender.send("addon-update-status", {
+        type: "batch-start",
+        total: gitAddons.length
+      });
+      const results = await Promise.all(gitAddons.map(async (addonPath, index) => {
+        const addonId = path.basename(addonPath);
         try {
+          event.sender.send("addon-update-status", {
+            type: "update-start",
+            addonId
+          });
           const git = simpleGit.simpleGit(addonPath);
           await git.pull();
+          event.sender.send("addon-update-status", {
+            type: "update-success",
+            addonId
+          });
           return { success: true };
         } catch (error) {
+          event.sender.send("addon-update-status", {
+            type: "update-error",
+            addonId,
+            error: error.message
+          });
           return { success: false, error: `${path.basename(addonPath)}: ${error.message}` };
+        } finally {
+          event.sender.send("addon-update-status", {
+            type: "batch-progress",
+            processed: index + 1,
+            total: gitAddons.length
+          });
         }
       }));
       results.forEach((res) => {
@@ -390,19 +434,51 @@ function setupIpcHandlers() {
           if (res.error) errors.push(res.error);
         }
       });
+      event.sender.send("addon-update-status", {
+        type: "batch-complete",
+        updated: successCount,
+        failed: failCount
+      });
       return { success: true, updated: successCount, failed: failCount, errors };
     } catch (error) {
       return { success: false, error: error.message };
     }
   });
-  ipcMain.handle("search-github", async (event, query) => {
+  ipcMain.handle("search-github", async (event, query, category = "all") => {
     try {
-      const searchTopics = [
-        `${query} topic:wow-addon language:lua`,
-        `${query} topic:world-of-warcraft language:lua`,
-        `${query} topic:warcraft language:lua`,
-        `${query} language:lua wow`
-      ];
+      let searchTopics = [];
+      switch (category) {
+        case "weakauras":
+          searchTopics = [
+            `${query} topic:weakauras`,
+            `${query} topic:weak-auras`,
+            `${query} "WeakAuras"`
+          ];
+          break;
+        case "plater":
+          searchTopics = [
+            `${query} topic:plater`,
+            `${query} topic:plater-profile`,
+            `${query} "Plater Nameplates"`
+          ];
+          break;
+        case "elvui":
+          searchTopics = [
+            `${query} topic:elvui`,
+            `${query} topic:elvui-plugin`,
+            `${query} "ElvUI"`
+          ];
+          break;
+        case "addon":
+        default:
+          searchTopics = [
+            `${query} topic:wow-addon language:lua`,
+            `${query} topic:world-of-warcraft language:lua`,
+            `${query} topic:warcraft language:lua`,
+            `${query} language:lua wow`
+          ];
+          break;
+      }
       const searchPromises = searchTopics.map(
         (searchQuery) => axios.get("https://api.github.com/search/repositories", {
           params: {

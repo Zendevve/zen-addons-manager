@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { Plus, Trash2, Check, FolderOpen } from 'lucide-react'
 import { storageService } from '@/services/storage'
 import { electronService } from '@/services/electron'
@@ -19,6 +20,7 @@ export function Settings() {
     addonsPath: '',
     executablePath: '',
   })
+  const [cleanWdb, setCleanWdb] = useState(false)
 
   useEffect(() => {
     loadInstallations()
@@ -26,6 +28,7 @@ export function Settings() {
 
   const loadInstallations = () => {
     setInstallations(storageService.getInstallations())
+    setCleanWdb(storageService.getCleanWdb())
   }
 
   const selectFolder = async () => {
@@ -91,12 +94,40 @@ export function Settings() {
     toast.success('Active installation changed')
   }
 
+  const toggleCleanWdb = (enabled: boolean) => {
+    setCleanWdb(enabled)
+    storageService.setCleanWdb(enabled)
+    toast.success(`WDB cleaning ${enabled ? 'enabled' : 'disabled'}`)
+  }
+
   return (
     <div className="p-8 max-w-[1200px] mx-auto space-y-6">
       <header>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground mt-2">Manage your WoW installations</p>
       </header>
+
+      {/* Global Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Global Settings</CardTitle>
+          <CardDescription>Configure application-wide behavior</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <label className="text-sm font-medium">Clean WDB folder on launch</label>
+              <p className="text-xs text-muted-foreground">
+                Automatically deletes the WDB (cache) folder when launching the game to prevent bugs.
+              </p>
+            </div>
+            <Switch
+              checked={cleanWdb}
+              onCheckedChange={toggleCleanWdb}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Add New Installation */}
       <Card>

@@ -5,6 +5,8 @@ declare global {
   interface Window {
     electron?: {
       invoke: (channel: string, ...args: any[]) => Promise<any>
+      on: (channel: string, func: (...args: any[]) => void) => void
+      off: (channel: string, func: (...args: any[]) => void) => void
     }
   }
 }
@@ -145,8 +147,8 @@ export const electronService = {
   /**
    * Launch the game executable
    */
-  async launchGame(executablePath: string): Promise<{ success: boolean; error?: string }> {
-    return invoke('launch-game', executablePath)
+  async launchGame(executablePath: string, cleanWdb: boolean = false): Promise<{ success: boolean; error?: string }> {
+    return invoke('launch-game', executablePath, cleanWdb)
   },
 
   /**
@@ -154,5 +156,23 @@ export const electronService = {
    */
   async validateWowPath(folderPath: string): Promise<{ success: boolean; executablePath?: string; addonsPath?: string; version?: string; error?: string }> {
     return invoke('validate-wow-path', folderPath)
+  },
+
+  /**
+   * Listen for addon update status events
+   */
+  onUpdateStatus(callback: (data: any) => void): void {
+    if (window.electron?.on) {
+      window.electron.on('addon-update-status', callback)
+    }
+  },
+
+  /**
+   * Stop listening for addon update status events
+   */
+  offUpdateStatus(callback: (data: any) => void): void {
+    if (window.electron?.off) {
+      window.electron.off('addon-update-status', callback)
+    }
   }
 }

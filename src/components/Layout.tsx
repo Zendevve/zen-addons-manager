@@ -72,6 +72,17 @@ export function Layout() {
     }
   }
 
+  const getVersionLogo = (version: string) => {
+    switch (version) {
+      case '1.12': return '/logos/vanilla.png'
+      case '2.4.3': return '/logos/tbc.png'
+      case '3.3.5': return '/logos/wrath.png'
+      case '4.3.4': return '/logos/cataclysm.png'
+      case '5.4.8': return '/logos/pandaria.png'
+      default: return null
+    }
+  }
+
   return (
     <TooltipProvider>
       <div className="flex h-screen bg-background">
@@ -124,16 +135,24 @@ export function Layout() {
                     <button
                       onClick={() => handleInstanceClick(inst)}
                       className={cn(
-                        'size-10 flex items-center justify-center rounded-xl transition-all relative group',
+                        'size-10 flex items-center justify-center rounded-xl transition-all relative group overflow-hidden',
                         isActive ? 'ring-2 ring-primary ring-offset-2 ring-offset-card' : 'hover:scale-105'
                       )}
                     >
-                      <div className={cn(
-                        "size-full rounded-xl flex items-center justify-center text-xs font-bold",
-                        getVersionColor(inst.version)
-                      )}>
-                        {getVersionLabel(inst.version)}
-                      </div>
+                      {getVersionLogo(inst.version) ? (
+                        <img
+                          src={getVersionLogo(inst.version)!}
+                          alt={inst.name}
+                          className="size-full object-cover rounded-xl"
+                        />
+                      ) : (
+                        <div className={cn(
+                          "size-full rounded-xl flex items-center justify-center text-xs font-bold",
+                          getVersionColor(inst.version)
+                        )}>
+                          {getVersionLabel(inst.version)}
+                        </div>
+                      )}
                       {/* Active Indicator Dot */}
                       {isActive && (
                         <div className="absolute -right-1 -top-1 size-3 bg-primary rounded-full border-2 border-card" />

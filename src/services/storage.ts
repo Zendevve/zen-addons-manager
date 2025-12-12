@@ -3,6 +3,7 @@ import type { WowInstallation } from '@/types/installation'
 const STORAGE_KEYS = {
   INSTALLATIONS: 'wow-installations',
   ACTIVE_INSTALLATION: 'active-installation-id',
+  CLEAN_WDB: 'clean-wdb-on-launch',
 } as const
 
 export const storageService = {
@@ -80,5 +81,19 @@ export const storageService = {
       isActive: inst.id === id,
     }))
     this.saveInstallations(updated)
+  },
+
+  /**
+   * Get WDB cleaning setting
+   */
+  getCleanWdb(): boolean {
+    return localStorage.getItem(STORAGE_KEYS.CLEAN_WDB) === 'true'
+  },
+
+  /**
+   * Set WDB cleaning setting
+   */
+  setCleanWdb(enabled: boolean): void {
+    localStorage.setItem(STORAGE_KEYS.CLEAN_WDB, String(enabled))
   },
 }

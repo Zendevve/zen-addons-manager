@@ -31,4 +31,17 @@ contextBridge.exposeInMainWorld('electron', {
 
     throw new Error(`Invalid IPC channel: ${channel}`)
   },
+  on: (channel: string, func: (...args: any[]) => void) => {
+    const validChannels = ['addon-update-status'];
+    if (validChannels.includes(channel)) {
+      // Deliberately strip event as it includes `sender`
+      ipcRenderer.on(channel, (event, ...args) => func(...args));
+    }
+  },
+  off: (channel: string, func: (...args: any[]) => void) => {
+    const validChannels = ['addon-update-status'];
+    if (validChannels.includes(channel)) {
+      ipcRenderer.removeListener(channel, (event, ...args) => func(...args));
+    }
+  }
 })

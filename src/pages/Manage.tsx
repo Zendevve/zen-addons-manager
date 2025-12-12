@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Search, RefreshCw, Trash2, DownloadCloud, MoreVertical, Settings, Activity, ChevronDown, ChevronRight, Filter, Plus, FileUp, Link as LinkIcon, Globe, ExternalLink, Copy, Share2, Ban, Play, CheckCircle2 } from 'lucide-react'
+import { Search, RefreshCw, Trash2, DownloadCloud, MoreVertical, Settings, Activity, ChevronDown, ChevronRight, Filter, Plus, FileUp, Link as LinkIcon, Globe, ExternalLink, Copy, Share2, Ban, Play, CheckCircle2, X, ArrowUpDown } from 'lucide-react'
 import { RightSidebar } from '@/components/RightSidebar'
 import { electronService } from '@/services/electron'
 import { storageService } from '@/services/storage'
@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import type { WowInstallation } from '@/types/installation'
 import { WOW_VERSIONS } from '@/types/installation'
+import { isValidGithubUsername } from '@/lib/utils'
 
 // Helper to format last played timestamp
 function formatLastPlayed(timestamp: number): string {
@@ -50,7 +51,7 @@ function getExpansionIcon(version: string = '') {
 const AddonIcon = ({ addon }: { addon: Addon }) => {
   const [error, setError] = useState(false)
 
-  if (addon.author && addon.author !== 'Unknown' && !error) {
+  if (addon.author && addon.author !== 'Unknown' && !error && isValidGithubUsername(addon.author)) {
     return (
       <img
         src={`https://github.com/${addon.author}.png?size=64`}
@@ -80,6 +81,10 @@ export function Manage() {
   const [selectedAddons, setSelectedAddons] = useState<string[]>([])
   const [expandedAddons, setExpandedAddons] = useState<string[]>([])
   const [isDragging, setIsDragging] = useState(false)
+  const [updatingAddons, setUpdatingAddons] = useState<Set<string>>(new Set())
+  const [sortBy, setSortBy] = useState<'name' | 'updated' | 'author' | 'status'>('name')
+  const [filterStatus, setFilterStatus] = useState<'all' | 'outdated' | 'enabled' | 'disabled' | 'git'>('all')
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   // URL Install Dialog
   const [isUrlDialogOpen, setIsUrlDialogOpen] = useState(false)
@@ -109,6 +114,62 @@ export function Manage() {
       loadAddons()
     }
   }, [addonFolder])
+
+  // Listen for update progress events
+  useEffect(() => {
+    const handleUpdateStatus = (data: any) => {
+      console.log('Update status:', data)
+
+      if (data.type === 'update-start') {
+        setUpdatingAddons(prev => new Set(prev).add(data.addonId))
+      } else if (data.type === 'update-success' || data.type === 'update-error') {
+        setUpdatingAddons(prev => {
+          const next = new Set(prev)
+          next.delete(data.addonId)
+          return next
+        })
+      } else if (data.type === 'batch-complete') {
+        // Clear all updating addons when batch completes
+        setUpdatingAddons(new Set())
+      }
+    }
+
+    electronService.onUpdateStatus(handleUpdateStatus)
+
+    return () => {
+      electronService.offUpdateStatus(handleUpdateStatus)
+    }
+  }, [])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+F to focus search
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+      // Esc to clear search
+      if (e.key === 'Escape' && search) {
+        setSearch('')
+        searchInputRef.current?.blur()
+      }
+      // Ctrl+A to select all
+      if (e.ctrlKey && e.key === 'a' && !e.shiftKey) {
+        // Only if not in an input
+        if (document.activeElement?.tagName !== 'INPUT') {
+          e.preventDefault()
+          const filtered = addons.filter(addon =>
+            addon.name.toLowerCase().includes(search.toLowerCase())
+          )
+          setSelectedAddons(filtered.map(a => a.id))
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [search, addons])
 
   const detectWowFolder = async () => {
     const result = await electronService.autoDetectWowFolder()
@@ -218,7 +279,11 @@ export function Manage() {
     }
 
     const toastId = toast.loading('Launching WoW...')
-    const result = await electronService.launchGame(executablePath)
+    const cleanWdb = storageService.getCleanWdb()
+    if (cleanWdb) {
+      toast.loading('Cleaning WDB folder...', { id: toastId })
+    }
+    const result = await electronService.launchGame(executablePath, cleanWdb)
 
     if (result.success) {
       // Update last played time
@@ -392,9 +457,35 @@ export function Manage() {
     }
   }
 
-  const filteredAddons = addons.filter(addon =>
-    addon.name.toLowerCase().includes(search.toLowerCase())
-  )
+  // Apply filters and sorting
+  const filteredAddons = addons
+    .filter(addon => {
+      // Search filter
+      if (!addon.name.toLowerCase().includes(search.toLowerCase())) {
+        return false
+      }
+      // Status filter
+      if (filterStatus === 'outdated' && addon.status !== 'outdated') return false
+      if (filterStatus === 'enabled' && addon.status !== 'enabled') return false
+      if (filterStatus === 'disabled' && addon.status !== 'disabled') return false
+      if (filterStatus === 'git' && addon.source !== 'git') return false
+      return true
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name)
+        case 'updated':
+          return new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
+        case 'author':
+          return a.author.localeCompare(b.author)
+        case 'status':
+          const statusOrder = { outdated: 0, enabled: 1, disabled: 2 }
+          return statusOrder[a.status as keyof typeof statusOrder] - statusOrder[b.status as keyof typeof statusOrder]
+        default:
+          return 0
+      }
+    })
 
   const toggleSelection = (id: string) => {
     setSelectedAddons(prev =>
@@ -434,8 +525,27 @@ export function Manage() {
         <div className="p-6 pb-0">
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-4">
-              <div className={`size-16 rounded-xl flex items-center justify-center border border-border text-xl font-bold text-white shadow-sm ${getExpansionIcon(activeInstallation?.version).color}`}>
-                {getExpansionIcon(activeInstallation?.version).text}
+              <div className="size-16 rounded-xl overflow-hidden shadow-sm border border-border">
+                {(() => {
+                  const logoPath = (() => {
+                    switch (activeInstallation?.version) {
+                      case '1.12': return '/logos/vanilla.png'
+                      case '2.4.3': return '/logos/tbc.png'
+                      case '3.3.5': return '/logos/wrath.png'
+                      case '4.3.4': return '/logos/cataclysm.png'
+                      case '5.4.8': return '/logos/pandaria.png'
+                      default: return null
+                    }
+                  })()
+
+                  return logoPath ? (
+                    <img src={logoPath} alt={activeInstallation?.name} className="size-full object-cover" />
+                  ) : (
+                    <div className={`size-full flex items-center justify-center text-xl font-bold text-white ${getExpansionIcon(activeInstallation?.version).color}`}>
+                      {getExpansionIcon(activeInstallation?.version).text}
+                    </div>
+                  )
+                })()}
               </div>
               <div>
                 <h1 className="text-2xl font-bold">{activeInstallation?.name || 'My Addons'}</h1>
@@ -519,12 +629,45 @@ export function Manage() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
                 <Input
-                  className="pl-9 bg-secondary/50 border-0"
+                  ref={searchInputRef}
+                  className="pl-9 pr-9 bg-secondary/50 border-0"
                   placeholder={`Search ${addons.length} addons...`}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="size-4" />
+                  </button>
+                )}
               </div>
+
+              {/* Sort Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <ArrowUpDown className="size-4" />
+                    Sort
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setSortBy('name')}>
+                    {sortBy === 'name' && '✓ '}Name (A-Z)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy('updated')}>
+                    {sortBy === 'updated' && '✓ '}Last Updated
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy('author')}>
+                    {sortBy === 'author' && '✓ '}Author
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy('status')}>
+                    {sortBy === 'status' && '✓ '}Status
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Install Dropdown */}
               <DropdownMenu>
@@ -554,10 +697,48 @@ export function Manage() {
           )}
 
           {selectedAddons.length === 0 && (
-            <div className="flex items-center gap-2">
-              <Filter className="size-4 text-muted-foreground mr-2" />
-              <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer">Mods</Badge>
-              <Badge variant="outline" className="text-muted-foreground hover:text-foreground cursor-pointer">Resource Packs</Badge>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Filter className="size-4 text-muted-foreground mr-2" />
+                <Badge
+                  variant={filterStatus === 'all' ? 'default' : 'outline'}
+                  className="cursor-pointer"
+                  onClick={() => setFilterStatus('all')}
+                >
+                  All
+                </Badge>
+                <Badge
+                  variant={filterStatus === 'outdated' ? 'default' : 'outline'}
+                  className="cursor-pointer"
+                  onClick={() => setFilterStatus('outdated')}
+                >
+                  Outdated
+                </Badge>
+                <Badge
+                  variant={filterStatus === 'enabled' ? 'default' : 'outline'}
+                  className="cursor-pointer"
+                  onClick={() => setFilterStatus('enabled')}
+                >
+                  Enabled
+                </Badge>
+                <Badge
+                  variant={filterStatus === 'disabled' ? 'default' : 'outline'}
+                  className="cursor-pointer"
+                  onClick={() => setFilterStatus('disabled')}
+                >
+                  Disabled
+                </Badge>
+                <Badge
+                  variant={filterStatus === 'git' ? 'default' : 'outline'}
+                  className="cursor-pointer"
+                  onClick={() => setFilterStatus('git')}
+                >
+                  Git Only
+                </Badge>
+              </div>
+              <span className="text-sm text-muted-foreground">
+                Showing {filteredAddons.length} of {addons.length} addons
+              </span>
             </div>
           )}
         </div>
@@ -604,7 +785,11 @@ export function Manage() {
             {/* Table Body */}
             <div className="divide-y divide-border">
               {filteredAddons.map((addon) => (
-                <div key={addon.id} className="group transition-colors hover:bg-muted/30">
+                <div
+                  key={addon.id}
+                  className="group transition-colors hover:bg-muted/30"
+                  onDoubleClick={() => toggleStatus(addon, addon.status !== 'enabled')}
+                >
                   <div className="grid grid-cols-[40px_1fr_150px_200px] gap-4 p-4 items-center">
                     <div className="flex items-center justify-center">
                       <Checkbox
@@ -639,8 +824,16 @@ export function Manage() {
                     </div>
 
                     <div className="flex items-center justify-end gap-3">
-                      {/* Only show update icon when addon is outdated */}
-                      {addon.source === 'git' && addon.status === 'outdated' && (
+                      {/* Show spinner when updating */}
+                      {updatingAddons.has(addon.name) && (
+                        <div className="flex items-center gap-2 text-primary">
+                          <RefreshCw className="size-4 animate-spin" />
+                          <span className="text-xs">Updating...</span>
+                        </div>
+                      )}
+
+                      {/* Only show update icon when addon is outdated and not currently updating */}
+                      {addon.source === 'git' && addon.status === 'outdated' && !updatingAddons.has(addon.name) && (
                         <Button
                           size="icon"
                           variant="ghost"
@@ -670,8 +863,12 @@ export function Manage() {
                             <ExternalLink className="mr-2 size-4" />
                             <span>Show file</span>
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => copyLink(addon.name)}>
+                            <Copy className="mr-2 size-4" />
+                            <span>Copy name</span>
+                          </DropdownMenuItem>
                           {addon.sourceUrl && (
-                            <DropdownMenuItem onClick={() => copyLink(addon.sourceUrl)}>
+                            <DropdownMenuItem onClick={() => copyLink(addon.sourceUrl!)}>
                               <Copy className="mr-2 size-4" />
                               <span>Copy link</span>
                             </DropdownMenuItem>
@@ -702,8 +899,26 @@ export function Manage() {
               ))}
 
               {filteredAddons.length === 0 && (
-                <div className="p-8 text-center text-muted-foreground">
-                  No addons found matching your search.
+                <div className="p-12 text-center text-muted-foreground">
+                  <div className="flex justify-center mb-4">
+                    <Search className="size-12 opacity-20" />
+                  </div>
+                  <h3 className="text-lg font-medium mb-1">No addons found</h3>
+                  <p className="text-sm opacity-70">
+                    Try adjusting your filters or search terms.
+                  </p>
+                  {(search || filterStatus !== 'all') && (
+                    <Button
+                      variant="link"
+                      onClick={() => {
+                        setSearch('')
+                        setFilterStatus('all')
+                      }}
+                      className="mt-2"
+                    >
+                      Clear all filters
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

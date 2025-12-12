@@ -32,6 +32,17 @@ export function Library() {
     return WOW_VERSIONS.find(v => v.value === version)?.label || version
   }
 
+  const getVersionLogo = (version: string) => {
+    switch (version) {
+      case '1.12': return '/logos/vanilla.png'
+      case '2.4.3': return '/logos/tbc.png'
+      case '3.3.5': return '/logos/wrath.png'
+      case '4.3.4': return '/logos/cataclysm.png'
+      case '5.4.8': return '/logos/pandaria.png'
+      default: return null
+    }
+  }
+
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
@@ -112,20 +123,24 @@ export function Library() {
             onClick={() => handleSelect(inst)}
           >
             <div className="flex items-start gap-4">
-              <div className={`size-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm
-                ${inst.version === 'retail' ? 'bg-slate-900' :
-                  inst.version === 'classic' ? 'bg-yellow-900' :
-                    inst.version === '1.12' ? 'bg-amber-900' :
-                      inst.version === '2.4.3' ? 'bg-green-900' :
-                        inst.version === '3.3.5' ? 'bg-blue-900' :
-                          'bg-secondary'
-                }`}
-              >
-                {inst.version === 'retail' ? 'R' :
-                  inst.version === 'classic' ? 'C' :
-                    inst.version === '1.12' ? '60' :
-                      inst.version === '2.4.3' ? '70' :
-                        inst.version === '3.3.5' ? '80' : '?'}
+              <div className="size-12 rounded-xl flex items-center justify-center overflow-hidden shadow-sm">
+                {getVersionLogo(inst.version) ? (
+                  <img
+                    src={getVersionLogo(inst.version)!}
+                    alt={inst.name}
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <div className={`size-full rounded-xl flex items-center justify-center text-white font-bold text-lg
+                    ${inst.version === 'retail' ? 'bg-slate-900' :
+                      inst.version === 'classic' ? 'bg-yellow-900' :
+                        'bg-secondary'
+                    }`}
+                  >
+                    {inst.version === 'retail' ? 'R' :
+                      inst.version === 'classic' ? 'C' : '?'}
+                  </div>
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold truncate pr-6">{inst.name}</h3>
