@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import { Plus, Trash2, Check, FolderOpen } from 'lucide-react'
 import { storageService } from '@/services/storage'
 import { electronService } from '@/services/electron'
+import { ServerProfileSection } from '@/components/ServerProfileSection'
 import type { WowInstallation } from '@/types/installation'
 import { WOW_VERSIONS } from '@/types/installation'
 import { toast } from 'sonner'
@@ -128,6 +129,9 @@ export function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Server Profiles */}
+      <ServerProfileSection installations={installations} />
 
       {/* Add New Installation */}
       <Card>

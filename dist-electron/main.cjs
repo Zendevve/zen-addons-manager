@@ -169,7 +169,6 @@ function createWindow() {
       });
     });
   }
-  win.webContents.openDevTools();
   win.once("ready-to-show", () => {
     win.show();
   });
@@ -715,6 +714,201 @@ function setupIpcHandlers() {
       return { success: true, executablePath: path.join(folderPath, foundExecutable), addonsPath, version: foundExecutable };
     }
     return { success: false, error: "No WoW executable found in this folder" };
+  });
+  ipcMain.handle("get-locale-folders", async (event, wowPath) => {
+    try {
+      const dataPath = path.join(wowPath, "Data");
+      const entries = await fs.readdir(dataPath, { withFileTypes: true });
+      const locales = [];
+      for (const entry of entries) {
+        if (entry.isDirectory() && /^[a-z]{2}[A-Z]{2}$/.test(entry.name)) {
+          locales.push(entry.name);
+        }
+      }
+      return { success: true, locales };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+  ipcMain.handle("detect-connection-files", async (event, { wowPath, expansion }) => {
+    try {
+      const files = [];
+      if (expansion === "5.4.8") {
+        const configPath = path.join(wowPath, "WTF", "Config.wtf");
+        try {
+          const content = await fs.readFile(configPath, "utf-8");
+          const match = content.match(/SET\s+portal\s+["']?([^"'\r\n]*)["']?/i);
+          files.push({
+            type: "config",
+            path: configPath,
+            currentValue: match ? match[1].trim() : void 0
+          });
+        } catch {
+          files.push({
+            type: "config",
+            path: configPath,
+            currentValue: void 0
+          });
+        }
+      } else {
+        const dataPath = path.join(wowPath, "Data");
+        if (expansion === "1.12") {
+          const rootRealmlist = path.join(wowPath, "realmlist.wtf");
+          try {
+            const content = await fs.readFile(rootRealmlist, "utf-8");
+            const match = content.match(/set\s+realmlist\s+["']?([^"'\r\n]+)["']?/i);
+            files.push({
+              type: "realmlist",
+              path: rootRealmlist,
+              currentValue: match ? match[1].trim() : void 0
+            });
+          } catch {
+          }
+        }
+        try {
+          const entries = await fs.readdir(dataPath, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.isDirectory() && /^[a-z]{2}[A-Z]{2}$/.test(entry.name)) {
+              const realmlistPath = path.join(dataPath, entry.name, "realmlist.wtf");
+              try {
+                const content = await fs.readFile(realmlistPath, "utf-8");
+                const match = content.match(/set\s+realmlist\s+["']?([^"'\r\n]+)["']?/i);
+                files.push({
+                  type: "realmlist",
+                  path: realmlistPath,
+                  locale: entry.name,
+                  currentValue: match ? match[1].trim() : void 0
+                });
+              } catch {
+              }
+            }
+          }
+        } catch {
+        }
+      }
+      return { success: true, files };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+  ipcMain.handle("detect-custom-patcher", async (event, wowPath) => {
+    const knownPatchers = [
+      "connection_patcher.exe",
+      "WoW_Patched.exe",
+      "Wow-64.exe",
+      "arctium_launcher.exe"
+    ];
+    try {
+      for (const patcher of knownPatchers) {
+        const patcherPath = path.join(wowPath, patcher);
+        try {
+          await fs.access(patcherPath);
+          return {
+            success: true,
+            found: true,
+            path: patcherPath,
+            type: patcher.replace(".exe", "").replace("_", "-")
+          };
+        } catch {
+        }
+      }
+      return { success: true, found: false };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+  ipcMain.handle("inject-server-profile", async (event, {
+    wowPath,
+    expansion,
+    connectionString
+  }) => {
+    try {
+      const modifiedFiles = [];
+      const warnings = [];
+      if (expansion === "5.4.8") {
+        const wtfPath = path.join(wowPath, "WTF");
+        const configPath = path.join(wtfPath, "Config.wtf");
+        await fs.mkdir(wtfPath, { recursive: true });
+        let content = "";
+        try {
+          content = await fs.readFile(configPath, "utf-8");
+        } catch {
+          warnings.push("Created new Config.wtf");
+        }
+        const lines = content.split("\n");
+        let found = false;
+        const newLines = lines.map((line) => {
+          if (line.trim().toLowerCase().startsWith("set portal")) {
+            found = true;
+            return `SET portal "${connectionString}"`;
+          }
+          return line;
+        });
+        if (!found) {
+          newLines.push(`SET portal "${connectionString}"`);
+        }
+        await fs.writeFile(configPath, newLines.join("\n"), "utf-8");
+        modifiedFiles.push(configPath);
+      } else {
+        const dataPath = path.join(wowPath, "Data");
+        if (expansion === "1.12") {
+          const rootRealmlist = path.join(wowPath, "realmlist.wtf");
+          let content = "";
+          try {
+            content = await fs.readFile(rootRealmlist, "utf-8");
+          } catch {
+            warnings.push("Created new realmlist.wtf in root");
+          }
+          const lines = content.split("\n");
+          let found = false;
+          const newLines = lines.map((line) => {
+            if (line.trim().toLowerCase().startsWith("set realmlist")) {
+              found = true;
+              return `set realmlist ${connectionString}`;
+            }
+            return line;
+          });
+          if (!found) {
+            newLines.push(`set realmlist ${connectionString}`);
+          }
+          await fs.writeFile(rootRealmlist, newLines.join("\n"), "utf-8");
+          modifiedFiles.push(rootRealmlist);
+        }
+        try {
+          const entries = await fs.readdir(dataPath, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.isDirectory() && /^[a-z]{2}[A-Z]{2}$/.test(entry.name)) {
+              const realmlistPath = path.join(dataPath, entry.name, "realmlist.wtf");
+              let content = "";
+              try {
+                content = await fs.readFile(realmlistPath, "utf-8");
+              } catch {
+                warnings.push(`Created new realmlist.wtf in ${entry.name}`);
+              }
+              const lines = content.split("\n");
+              let found = false;
+              const newLines = lines.map((line) => {
+                if (line.trim().toLowerCase().startsWith("set realmlist")) {
+                  found = true;
+                  return `set realmlist ${connectionString}`;
+                }
+                return line;
+              });
+              if (!found) {
+                newLines.push(`set realmlist ${connectionString}`);
+              }
+              await fs.writeFile(realmlistPath, newLines.join("\n"), "utf-8");
+              modifiedFiles.push(realmlistPath);
+            }
+          }
+        } catch (error) {
+          warnings.push(`Could not access Data folder: ${error.message}`);
+        }
+      }
+      return { success: true, modifiedFiles, warnings };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   });
 }
 app.on("ready", () => {
