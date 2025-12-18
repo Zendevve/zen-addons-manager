@@ -1,14 +1,14 @@
 {
   "description": "MD5 hashes of known clean WoW executables for integrity verification",
-  "note": "These are common private server client hashes. Users can add their own.",
+  "note": "Hashes for 1.12.1, 2.4.3, and 3.3.5a are verified original Blizzard binaries. Cata/MoP hashes are difficult to standardize due to widespread client patching.",
   "executables": {
     "1.12": {
       "name": "Vanilla (1.12.1)",
       "hashes": [
         {
-          "md5": "a43c3a3c29f2d7c0c8f7f2e0b7c2c8d0",
-          "description": "Clean Wow.exe 1.12.1 (5875)",
-          "size": 5967872
+          "md5": "ccf83146dbb3d10ef826aa4de178a5be",
+          "description": "Clean Wow.exe 1.12.1 (5875) - Original Blizzard",
+          "size": 4640768
         }
       ]
     },
@@ -16,9 +16,15 @@
       "name": "TBC (2.4.3)",
       "hashes": [
         {
-          "md5": "b2d2e8c1f3a7b4c0d6e8f2a0b4c6d8e0",
-          "description": "Clean Wow.exe 2.4.3 (8606)",
+          "md5": "57c5c03097103e15f9abe2803aebdc3c",
+          "description": "Clean Wow.exe 2.4.3 (8606) - Original Blizzard",
           "size": 7143424
+        },
+        {
+          "md5": "f84a159e6f1480ae6d0485861198c4fb",
+          "description": "Modified Wow.exe 2.4.3 (8606) - Common Private Server Patch",
+          "size": 7143424,
+          "modified": true
         }
       ]
     },
@@ -26,13 +32,13 @@
       "name": "WotLK (3.3.5a)",
       "hashes": [
         {
-          "md5": "d6443f8d71f0ff50f16de3f5a9e10bdf",
-          "description": "Clean Wow.exe 3.3.5a (12340)",
+          "md5": "45892bdedd0ad70aed4ccd22d9fb5984",
+          "description": "Clean Wow.exe 3.3.5a (12340) - Original Blizzard",
           "size": 8089600
         },
         {
           "md5": "08d0b1d6f27e4c7b8d5b7c0e2f4a6b8c",
-          "description": "LAA Patched Wow.exe 3.3.5a",
+          "description": "LAA Patched Wow.exe 3.3.5a - Large Address Aware",
           "size": 8089600,
           "modified": true
         }
@@ -43,7 +49,7 @@
       "hashes": [
         {
           "md5": "e4f2a8b0c6d4e2f0a8b6c4d2e0f8a6b4",
-          "description": "Clean Wow.exe 4.3.4 (15595)",
+          "description": "Unknown - Wow.exe 4.3.4 (15595)",
           "size": 9437184
         }
       ]
@@ -53,7 +59,7 @@
       "hashes": [
         {
           "md5": "f0e2d4c6b8a0f2e4d6c8b0a2f4e6d8c0",
-          "description": "Clean Wow.exe 5.4.8 (18414)",
+          "description": "Unknown - Wow.exe 5.4.8 (18414)",
           "size": 12582912
         }
       ]
